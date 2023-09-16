@@ -71,14 +71,7 @@ module.exports = () => {
     experimental: {
       appDir: true,
     },
-    async headers() {
-      return [
-        {
-          source: '/(.*)',
-          headers: securityHeaders,
-        },
-      ]
-    },
+    output: 'export',
     webpack: (config, options) => {
       config.module.rules.push({
         test: /\.svg$/,
