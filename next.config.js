@@ -4,18 +4,6 @@ const withBundleAnalyzer = require('@next/bundle-analyzer')({
   enabled: process.env.ANALYZE === 'true',
 })
 
-// You might need to insert additional domains in script-src if you are using external services
-const ContentSecurityPolicy = `
-  default-src 'self';
-  script-src 'self' 'unsafe-eval' 'unsafe-inline' giscus.app analytics.umami.is;
-  style-src 'self' 'unsafe-inline';
-  img-src * blob: data:;
-  media-src *.s3.amazonaws.com;
-  connect-src *;
-  font-src 'self';
-  frame-src giscus.app
-`
-
 /**
  * @type {import('next/dist/next-server/server/config').NextConfig}
  **/
@@ -28,7 +16,8 @@ module.exports = () => {
       dirs: ['app', 'components', 'layouts', 'scripts'],
     },
     images: {
-      domains: ['picsum.photos'],
+      loader: 'akamai',
+      path: '',
     },
     experimental: {
       appDir: true,
