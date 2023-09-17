@@ -16,8 +16,7 @@ module.exports = () => {
       dirs: ['app', 'components', 'layouts', 'scripts'],
     },
     images: {
-      loader: 'akamai',
-      path: '',
+      unoptimized: true
     },
     experimental: {
       appDir: true,
