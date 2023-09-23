@@ -4,7 +4,7 @@ import Logo from '@/data/logo.svg'
 import Link from './Link'
 import MobileNav from './MobileNav'
 import ThemeSwitch from './ThemeSwitch'
-import SearchButton from './SearchButton'
+import Image from '@/components/Image'
 
 const Header = () => {
   return (
@@ -35,6 +35,19 @@ const Header = () => {
               {link.title}
             </Link>
           ))}
+        {/* <Image
+          src='/static/images/australia_flag_icon.png'
+          alt="au"
+          width={20}
+          height={15}
+        />
+        <Image
+          src='/static/images/colombia_flag_icon.png'
+          alt="au"
+          width={20}
+          height={15}
+        /> */}
+
         <ThemeSwitch />
         <MobileNav />
       </div>

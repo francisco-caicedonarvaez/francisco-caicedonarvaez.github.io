@@ -3,7 +3,7 @@ const siteMetadata = {
   title: '{|[•_•]|}',
   author: 'Francisco Caicedo Narvaez',
   headerTitle: 'Francisco\'s Blog',
-  description: 'A blog created with Next.js and Tailwind.css',
+  description: '',
   language: 'en-us',
   theme: 'system', // system, dark or light
   siteUrl: 'https://francisco-blog.vercel.app',
@@ -13,7 +13,7 @@ const siteMetadata = {
   mastodon: 'https://mastodon.social/@mastodonuser',
   email: 'address@yoursite.com',
   github: 'https://github.com/francisco-caicedonarvaez',
-  twitter: '',
+  twitter: 'https://twitter.com/_Francisco_CN',
   facebook: 'https://facebook.com',
   youtube: 'https://youtube.com',
   linkedin: 'https://www.linkedin.com/in/francisco-caicedo-narvaez',
