@@ -1,16 +1,27 @@
+'use client'
+
 import siteMetadata from '@/data/siteMetadata'
 import headerNavLinks from '@/data/headerNavLinks'
 import Logo from '@/data/logo.svg'
 import Link from './Link'
 import MobileNav from './MobileNav'
 import ThemeSwitch from './ThemeSwitch'
-import Image from '@/components/Image'
+import LanguageSwitcher from './LanguageSwitcher'
+import { useLocale, useTranslations } from 'next-intl'
+
+const getLocaleLink = (url: string, locale: string) => {
+  const localeUrl = `/${locale}/${url}`
+  return localeUrl
+}
 
 const Header = () => {
+  const locale = useLocale()
+  const t = useTranslations('Menu')
+
   return (
     <header className="flex items-center justify-between py-10">
       <div>
-        <Link href="/" aria-label={siteMetadata.headerTitle}>
+        <Link href={`/${locale}`} aria-label={siteMetadata.headerTitle}>
           <div className="flex items-center justify-between">
             <div className="mr-3"></div>
             {typeof siteMetadata.headerTitle === 'string' ? (
@@ -28,26 +39,14 @@ const Header = () => {
           .filter((link) => link.href !== '/')
           .map((link) => (
             <Link
-              key={link.title}
-              href={link.href}
+              key={t(link.title)}
+              href={getLocaleLink(link.href, locale)}
               className="hidden sm:block font-medium text-gray-900 dark:text-gray-100"
             >
-              {link.title}
+              {t(link.title)}
             </Link>
           ))}
-        {/* <Image
-          src='/static/images/australia_flag_icon.png'
-          alt="au"
-          width={20}
-          height={15}
-        />
-        <Image
-          src='/static/images/colombia_flag_icon.png'
-          alt="au"
-          width={20}
-          height={15}
-        /> */}
-
+        <LanguageSwitcher />
         <ThemeSwitch />
         <MobileNav />
       </div>

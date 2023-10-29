@@ -1,0 +1,199 @@
+---  
+title: Creando un sitio Headless SXA en XM Cloud utilizando una plantilla base 
+date: '2023-10-26'  
+tags: ['sitecore', 'xm cloud' , 'next-js']  
+locale: 'es' 
+draft: false  
+summary: Compartiendo mi experiencia al crear un nuevo projecto en XM Cloud. 
+---  
+
+Me gustaría compartir mi experiencia al crear un sitio Headless SXA utilizando la aplicación de XM Cloud deploy y una plantilla base. 
+Describiré paso a paso el proceso de creación del proyecto, la configuración del entorno y finalizaré integrando el repositorio generado en tu computador. 
+ 
+
+# Crear el projecto en XM Cloud 
+
+  
+
+1. Ingresa en el portal de XM Cloud https://portal.sitecorecloud.io. Ten en cuenta que necesitas pertenecer a la organización, es decir, debes tener una suscripción activa.  
+
+2. Navega hacia la app de _XM Cloud Deploy_. 
+
+  
+
+![cloud deploy](/static/images/create-xm-cloud-project/1_cloud_deploy.png)  
+
+  
+
+3. Empezaremos creando el proyecto haciendo click en el botón _"Create project"_. Para esta ocasión escogemos _"Start from XM Cloud starter foundation"_ de las dos opciones disponibles. 
+
+    Esta opción proporcionará todos los recursos y artefactos necesarios para crear un proyecto en XM Cloud. 
+
+ 
+![create project](/static/images/create-xm-cloud-project/2_create_project.png)  
+
+  
+
+4. Selecciona la plantilla base. En el momento en que escribo este post, solo hay una plantilla disponible  _XM Cloud Foundation_. 
+
+  
+
+![starter template](/static/images/create-xm-cloud-project/3_starter_template.png)  
+
+  
+
+5. Asigna un nombre para tu proyecto. 
+
+  
+
+![project name](/static/images/create-xm-cloud-project/4_project_name.png)  
+
+  
+
+6.  Selecciona tu proveedor de repositorios. En el momento en que escribo este post, únicamente  _GitHub_ está disponible usando la UI.  
+
+     
+
+    Hay otras formas de crear un proyecto en XM Cloud usando [Sitecore CLI](https://doc.sitecore.com/xmc/en/developers/xm-cloud/walkthrough--creating-an-xm-cloud-project-using-the-sitecore-cli.html) si optas por no usar GitHub. 
+
+  
+
+![repository provider](/static/images/create-xm-cloud-project/5_repository_provider.png)  
+
+  
+
+7. Enseguida, creamos o seleccionamos una conexión en GitHub. Mas detalles acerca de la creación de una nueva conexión se encuentra en la página oficial de Sitecore [documentation](https://doc.sitecore.com/xmc/en/developers/xm-cloud/manage-connections-for-source-control-and-hosting-providers.html). 
+
+  
+
+![github connection](/static/images/create-xm-cloud-project/6_github_connection.png)  
+
+  
+
+8. Nombra el repositorio que será creado en tu cuenta individual / organización vinculada de GitHub. Mas información acerca del repositorio que será clonado durante este proceso se encuentra [aquí](https://github.com/sitecorelabs/xmcloud-foundation-head). 
+
+  
+
+![add repository](/static/images/create-xm-cloud-project/7_add_repository.png)  
+
+  
+
+9. Por último, vamos a agregar el entorno. Procedemos asignando un nombre a nuestro entorno. 
+
+  
+
+    Al seleccionar Yes en la opción _Trigger deployment on commit branch_, la publicacion de la aplicación empezara inmediatamente después de hacer el commit en la branch main.  
+
+![add environment](/static/images/create-xm-cloud-project/8_add_environment.png)  
+
+  
+
+10. Una vez finalizamos con la configuración del proyecto, la publicación de la aplicación dará comienzo. 
+
+  
+
+![deployment started](/static/images/create-xm-cloud-project/9_deployment_started.png)  
+
+  
+
+11. Cunado la publicación finalice, tendremos disponible una instancia CM vacía. 
+
+  
+
+![deployment complete](/static/images/create-xm-cloud-project/10_deployment_complete.png)  
+
+  
+
+12. Haciendo click en el botón _Go to XM Cloud_ mostrado en el paso anterior nos llevara a la XM Cloud Launchpad. 
+
+  
+
+![xm cloud env environment](/static/images/create-xm-cloud-project/11_xm_cloud_env.png)  
+
+  
+
+  
+
+## Agrega el sitio web a tu proyecto 
+
+  
+
+1. Continuando después de haber creado el proyecto, navega a la pestaña de _Sites_ y has click en el botón _Create website_. 
+
+  
+
+![create site](/static/images/create-xm-cloud-project/12_create_new_website.png)  
+
+  
+
+2. En este paso, decidí escoger la opción de _Empty Site_ entre las plantillas disponibles para indagar acerca de los archivos necesarios que se necesita para construir un nuevo sitio web. 
+
+  
+
+![choose template](/static/images/create-xm-cloud-project/13_choose_template.png)  
+
+  
+
+3. Asigna un _name_ y un _site identifier_ a tu sitio web (el ultimo es opcional para conectarse con CDP & Personalization, se puede agregar después) 
+
+  
+
+![configure site](/static/images/create-xm-cloud-project/14_site_settings.png)  
+
+  
+
+4. Después de hacer click en el botón _Create website_, el nuevo sitio web vacío está listo para empezar a trabajar en él.  
+
+![empty project](/static/images/create-xm-cloud-project/15_empty_project_created.png)  
+
+  
+
+5. Haz click en la silueta con el nombre del sitio web para navegar hacia *Pages*. Esta aplicación es una nueva UI WYSIWYG que te permite añadir contenido sin necesidad de desarrollar código.  
+
+![empty site](/static/images/create-xm-cloud-project/16_empty_site_pages.png)  
+
+  
+
+6. Volviendo a la XM Cloud Launchpad, haz click en la pestaña de _Tools_ y después haz click en _Content Editor_. 
+
+  
+
+![content editor](/static/images/create-xm-cloud-project/17_content_editor.png)  
+
+  
+
+7. Aquí encontraras tu sitio web headless SXA en el árbol de contenido. 
+
+  
+
+![headless site](/static/images/create-xm-cloud-project/18_headless_sxa_site.png)  
+
+  
+
+  
+
+## Descarga el repositorio de GitHub a tu computador 
+
+  
+
+1. Finalmente, podemos descargar el repositorio de GitHub a nuestro computador para empezar a programar. Dirígete a tu cuenta / organización de GitHub, ahí encontraras el nuevo repositorio con el nombre asignado durante la configuración del proyecto en XM Cloud.  
+
+![github repo environment](/static/images/create-xm-cloud-project/19_github_repo.png)  
+
+  
+
+2. Clona el repositorio en tu computador usando tu herramienta preferida. 
+
+   
+
+![repo local copy](/static/images/create-xm-cloud-project/20_repo_local_copy.png)  
+
+  
+
+  
+
+3. Tu sitio web se ejecutará en contenedores usando Docker. Los scripts para descargar las imágenes de Sitecore y para la creacion de los contenedores hacen parte del repositorio. 
+
+ 
+
+Eso es todo para este post. Espero que tengas una idea de lo que implica crear un proyecto en XM Cloud usando la plantilla base disponible y obteniendo el código base en tu computador para comenzar a programar en tu nuevo sitio web. 

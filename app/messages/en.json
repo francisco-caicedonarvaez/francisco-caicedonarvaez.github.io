@@ -1,0 +1,31 @@
+{
+  "LocaleSwitcher": {
+    "locale": "{locale, select, es {Spanish} en {English} other {Unknown}}"
+  },
+  "Menu": {
+    "home": "Home",
+    "blog": "Blog",
+    "tags": "Tags",
+    "about": "About"
+  },
+  "IndexPage": {
+    "title": "Latest",
+    "read-more": "Read more",
+    "all-posts": "All posts"
+  },
+  "BlogPage": {
+    "title": "Blog",
+    "all-posts": "All posts",
+    "previous-article": "previous article",
+    "next-article": "next article",
+    "back-to-blog": "Back to the blog",
+    "previous": "Previous",
+    "next": "Next"
+  },
+  "TagsPage": {
+    "title": "Tags"
+  },
+  "AboutPage": {
+    "title": "About"
+  }
+}

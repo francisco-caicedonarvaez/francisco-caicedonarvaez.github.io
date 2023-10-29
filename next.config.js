@@ -16,12 +16,10 @@ module.exports = () => {
       dirs: ['app', 'components', 'layouts', 'scripts'],
     },
     images: {
-      unoptimized: true
-    },
-    experimental: {
-      appDir: true,
+      unoptimized: true,
     },
     output: 'export',
+    trailingSlash: true,
     webpack: (config, options) => {
       config.module.rules.push({
         test: /\.svg$/,

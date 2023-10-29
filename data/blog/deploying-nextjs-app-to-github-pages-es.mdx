@@ -1,0 +1,133 @@
+---  
+title: Publicar una aplicación Next.js en GitHub Pages 
+date: '2023-10-25'  
+tags: ['github', 'next-js']  
+locale: 'es' 
+draft: false  
+summary: Presentando los pasos que seguí para publicar una aplicación en Next.js app (Este Blog) en GitHub Pages.  
+--- 
+
+
+Hace poco tomé la decisión de compartir mis experiencias como programador en un blog y, por qué no, comenzar describiendo los pasos que seguí para publicar una aplicación Next.js (_Este Blog_) en GitHub Pages. 
+
+ 
+La aplicación que estoy usando es una plantilla clonada de [Vercel templates](https://vercel.com/templates/next.js/tailwind-css-starter-blog). 
+  
+
+ 
+
+## Creando el repositorio  
+
+Primero, empezamos creando un respositorio **publico** en GitHub usando la siguiente convención _\<usuario_github\>.github.io_.  El nombre del repositorio debe comenzar con tu nombre de usuario para que funcione. 
+  
+
+![create repo](/static/images/create-page-github/1_create_repo.png) 
+
+  
+
+2.  Puedes clonar el repositorio usando el cliente git de tu preferencia. 
+
+  
+
+![clone repo](/static/images/create-page-github/2_clone_repo.png) 
+
+  
+
+3.  Crea o copia la aplicación Next.js en el repositorio. En mi caso, cloné la plantilla base de [Vercel templates](https://vercel.com/templates/next.js/tailwind-css-starter-blog) e hice algunos ajustes a mi gusto.  
+
+![add app](/static/images/create-page-github/3_add_nextjs_app.png) 
+
+  
+
+4. Prueba que la aplicación funciona en tu PC. 
+
+Esta aplicación está configurada con _yarn package manager_, por lo tanto, la puedes correr usando el siguiente comando para cargar la aplicación en tu navegador. 
+
+  
+
+``` script 
+
+yarn dev 
+
+``` 
+
+  
+
+![run app](/static/images/create-page-github/4_run_app_local.png) 
+
+  
+
+5. Una vez comprobado, commit and push tus cambios en GutHub 
+
+  
+
+![push repo](/static/images/create-page-github/5_push_repo.png) 
+
+  
+
+
+## Configurando Pages 
+
+  
+
+1. En GitHub, ubica el repositorio _\<usuario_github\>.github.io_  y navega hacia _Settings > Pages_. 
+
+  
+
+![settings pages repo](/static/images/create-page-github/6_settings_pages.png) 
+
+  
+
+2. Ubica la sección de Build and deployment, haz click en el Source dropdown y  escoge GitHub _Actions_. 
+
+  
+
+![github actions pages repo](/static/images/create-page-github/7_github_actions.png) 
+
+  
+
+3. Un nuevo worklfow de GitHub aparecerá debajo. Click en el botón _Configure_. 
+
+  
+
+![workflow](/static/images/create-page-github/8_workflow.png) 
+
+  
+
+4. Este workflow será ejecutado cada vez que hagas un commit el la branch *main*, en donde la aplicación se compila y se publica tan pronto como el commit es realizado. 
+
+Puedes guardar el workflow haciendo click en el botón _Commit Changes_. 
+
+  
+
+![workflow confirmation](/static/images/create-page-github/9_workflow_confirmation.png) 
+
+  
+
+5. Añade tu mensaje en el commit y haz click en _Commit Changes_ 
+
+  
+
+![commit workflow](/static/images/create-page-github/10_commit_workflow.png) 
+
+  
+
+6. Puedes navegar hacia la sección _Actions_ y mirar el progreso de la publicacion.  
+
+![deploy progress](/static/images/create-page-github/11_deploy_progress.png) 
+
+  
+
+7. Una vez el proceso termine, puedes navegar a la URL que aparecerá en _deploy_ job. 
+
+  
+
+![deploy complete](/static/images/create-page-github/12_deploy_complete.png) 
+
+  
+
+8. Y esto es todo por ahora! Tienes una aplicación Next.js publicada y corriendo en GitHub Pages. 
+
+  
+
+![pages live](/static/images/create-page-github/13_pages_live.png) 

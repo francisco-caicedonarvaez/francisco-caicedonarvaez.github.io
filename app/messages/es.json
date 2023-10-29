@@ -1,0 +1,31 @@
+{
+  "LocaleSwitcher": {
+    "locale": "{locale, select, es {Español } en {Ingles} other {Otro}}"
+  },
+  "Menu": {
+    "home": "Inicio",
+    "blog": "Blog",
+    "tags": "Tags",
+    "about": "Bio"
+  },
+  "IndexPage": {
+    "title": "Recientes",
+    "read-more": "Ver mas",
+    "all-posts": "Ver todo"
+  },
+  "BlogPage": {
+    "title": "Blog",
+    "all-posts": "Ver todo",
+    "previous-article": "articulo anterior",
+    "next-article": "siguiente articulo",
+    "back-to-blog": "Regresar al blog",
+    "previous": "Anterior",
+    "next": "Siguiente"
+  },
+  "TagsPage": {
+    "title": "Tags"
+  },
+  "AboutPage": {
+    "title": "Bio"
+  }
+}
