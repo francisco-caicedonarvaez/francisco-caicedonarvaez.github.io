@@ -9,7 +9,7 @@ const siteMetadata = {
   siteUrl: 'https://francisco-blog.vercel.app',
   siteRepo: 'https://github.com/francisco-caicedonarvaez/francisco-caicedonarvaez.github.io',
   siteLogo: '/static/images/logo.png',
-  socialBanner: '/static/images/twitter-card.png',
+  socialBanner: '/static/images/og-image.png',
   mastodon: 'https://mastodon.social/@mastodonuser',
   email: 'address@yoursite.com',
   github: 'https://github.com/francisco-caicedonarvaez',
