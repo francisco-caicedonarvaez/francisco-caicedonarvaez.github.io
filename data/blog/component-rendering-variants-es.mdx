@@ -1,0 +1,112 @@
+---   
+title: Uso de Rendering Variants por Componente 
+date: '2023-11-15'   
+tags: ['sitecore', 'spe']   
+locale: 'es'  
+draft: false   
+summary: Generar un reporte para identificar el uso de rendering variants por componente en tu proyecto SXA Sitecore. 
+---   
+
+Este script hecho en PowerShell genera un reporte que muestra el uso de rendering variants por componente en un proyecto SXA Sitecore. Lo encuentro muy útil ya que identifica las rendering variants con mayor uso en tu proyecto, como también las que no han sido usadas en absoluto. 
+
+Este script puede ser útil durante rutinas de mantenimiento y limpieza, ya que es fácil identificar lo que puede ser seguro eliminar sin perjudicar el funcionamiento del proyecto.  
+
+```powershell 
+<# 
+    .SYNOPSIS 
+    Count of references for each rendering variant definition. 
+    Results include only Rendering Definitions under Rendering Variants. 
+#> 
+
+$props = @{
+    Title = "Available Rendering Variants Definition"
+    Description = "Count of references for each rendering variant definition. Results include only Rendering Definitions under Rendering Variants."
+    OkButtonName = "Run Report"
+    CancelButtonName = "Cancel"
+    Parameters = @(
+        @{ Name = "rootItem"; Title = "Search Root"; Editor = "droptree"; Source = "/sitecore/content" }
+    )
+}
+
+$result = Read-Variable @props
+if($result -ne "ok") {
+    Close-Window
+    Exit
+}
+
+Import-Function Render-ReportField
+
+filter IsRenderingDefinition {
+    # Template: /sitecore/templates/Foundation/Experience Accelerator/Rendering Variants/Variant Definition 
+    $renderingIds = @("{FB3E3034-33F8-4CE8-BE98-DD05010F4C22}")
+
+    if(($renderingIds -contains $_.TemplateID)) { $_; return }
+}
+
+$database = "master"
+
+# Root location
+$renderingsRootItem = Get-Item -Path "$($database):$($rootItem.ID)"
+
+$items = $renderingsRootItem.Axes.GetDescendants() | Initialize-Item | IsRenderingDefinition
+
+$reportItems = @()
+
+foreach($item in $items) {
+    $count = 0
+    $referrers = Get-ItemReferrer -Item $item
+
+    if ($referrers -ne $null) {
+        $count = $referrers.Count
+    }
+
+    $reportItem = [PSCustomObject]@{
+        "Icon" = $item."__Icon"
+        "Name"=$item.Name
+        "UsageCount"=$count
+        "ItemPath" = $item.ItemPath
+        "TemplateName" = $item.TemplateName
+        "Controller" = $item.Controller
+        }
+
+    $reportItems += $reportItem
+}
+
+$reportProps = @{
+    Property = @(
+        "Icon",
+        @{Name="Rendering Definition Name"; Expression={$_.Name}},
+        @{Name="Number of usages"; Expression={$_.UsageCount}}, 
+        "ItemPath",
+        @{Label="Rendering Type"; Expression={$_.TemplateName}}
+    )
+
+    Title = "Available Rendering Variants Definition"
+    InfoTitle = "Available Rendering Variants Definition"
+    InfoDescription = "Count of references for each rendering variant definition. Results include only Rendering Definitions under Rendering Variants." 
+
+}
+
+$reportItems |
+    Sort-Object UsageCount -Descending |
+    Show-ListView @reportProps
+
+Close-Window
+``` 
+
+ 
+
+Cuando ejecutamos el script, debemos escoger el punto de inicio donde empieza la búsqueda. Únicamente, items usando la plantilla _/Sitecore/Templates/Foundation/Experience Accelerator/Rendering Variants/Variant Definition_ serán filtrados. 
+
+  
+El reporte se puede generar para obtener el uso de todas las rendering variants o por componente para obtener resultados más específicos.  
+
+![select starting location](/static/images/component-rendering-variants/select_node.png) 
+
+  
+
+El reporte mostrara una tabla con el nombre de la rendering variant, el número de usos, y el path de la rendering variant del componente. 
+  
+![select starting location](/static/images/component-rendering-variants/rendering_variants_output.png)  
+ 
+El anterior reporte muestra los resultados obtenidos después de escoger el componente _Cards_, mostrando las rendering variants del componente. 
