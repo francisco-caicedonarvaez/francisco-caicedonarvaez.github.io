@@ -1,0 +1,209 @@
+---   
+title: Using SPE to archive unreferenced items from the media library and SXA data folder  
+date: '2024-01-07'   
+tags: ['sitecore', 'spe']   
+locale: 'en'  
+draft: false   
+summary: Preview and archive items not referenced in your project located in the media library and SXA data folder. 
+---   
+
+Over the years the Sitecore content tree keeps growing and starts stockpiling items that are no longer needed. Looking after ways to declutter a Sitecore solution, I put together a PowerShell script that allows search and find media library items or, if you are using SXA, items under the Data folder that might not be required anymore in your project. Allowing you to browse and to perform a bulk archive operation. 
+
+ 
+
+## Preview and/or Archive unreferenced items 
+
+ 
+This script was created to preview and archive unused media items as well as data items. The later to be used in an SXA solution. 
+
+  
+Running the script below will output the media items under **\<project_name\>** directories that are not referenced in the content tree. 
+Or, the data items located under _/sitecore/content/\<project_name\>/Data_. 
+
+Replace the **\<project_name\>** entries in the script with your project name path.
+
+```powershell
+  
+$options = @{
+    "Media Items"= "media"
+    "<project_name> Data"= "projectdata"
+}
+
+$props = @{
+    Title = "Preview and/or Archive items"
+    Description = "Displays items not referenced that can be archived"
+    OkButtonName = "Run Report"
+    CancelButtonName = "Cancel"
+    Parameters = @(
+        @{ Name = "selectedOption"; Title = "Select Search Location"; Options = $options; Tooltip = "Choose one option" },
+        @{ Name = "performArchiving"; Title = "Archiving enabled"; Value=$false; Tooltip = "Check to perform archiving"  }
+    )
+}
+
+$result = Read-Variable @props
+
+if($result -ne "ok") {
+    Close-Window
+    Exit
+}
+
+# HasReference determines if the specified item is referenced by any other item.
+function HasReference {
+    param(
+        $Item
+    )
+
+    $linkDb = [Sitecore.Globals]::LinkDatabase
+    $linkDb.GetReferrerCount($Item) -gt 0
+}
+
+# ArchiveItem archives Sitecore item passed as param
+function ArchiveItem {
+    param(
+        $Item
+    )
+
+    if($performArchiving -eq $true) {
+        $archive = [Sitecore.Data.Archiving.ArchiveManager]::GetArchive("archive", $Item.Database)
+        $archive.ArchiveItem($item)
+        Write-Host "Item archived: " $Item.ItemPath
+    }
+}
+
+function Get-Items {
+    switch($selectedOption) {
+        "media" {
+            Get-MediaItemWithNoReference
+        }
+        "projectdata" {
+            Get-ProjectDataWithNoReference
+        }
+        default {
+            Write-Host "Not available."
+            Close-Window
+            Exit
+        }
+    }
+    
+}
+
+function ProcessItems {
+     param(
+        $Items,
+        [bool]$checkHelixFolders = $false
+    )
+
+    foreach($item in $Items) {
+        if($checkHelixFolders) {
+            $projectItem = $item.ItemPath | %{$_ -match "Feature/<project_Name>/" -or $_ -match "Foundation/<project_Name>/" -or $_ -match "Project/<project_Name>/"}
+            if($projectItem -contains $true) {
+                if(!(HasReference($item))) {
+                    $item
+                    
+                    ArchiveItem($item)
+                }
+            }
+        } else {
+            <# 
+                Exclusions list for SXA default Data items.
+
+                SXA Forms: {7F9D1A45-F31E-4714-AC66-1E300AE1B792}
+                SXA Gallery: {57BCF1CE-35CB-4752-B23B-2D4522AF6292}
+                SXA POIs: {8CA8B80D-A1AD-4B45-9F08-8839357E71D4} and {7DD9ECE5-9461-498D-8721-7CBEA8111B5E}
+                SXA Security: {33077D51-EBAD-4D1C-B4A8-3B79F51DBA13}
+                SXA Carousel: {ADD22F05-6B4C-4344-95AD-9A1A9BA6A216}
+                ...
+                Add more as required
+            #>
+            $itemExclusions = @(
+                "{7F9D1A45-F31E-4714-AC66-1E300AE1B792}", 
+                "{57BCF1CE-35CB-4752-B23B-2D4522AF6292}", 
+                "{8CA8B80D-A1AD-4B45-9F08-8839357E71D4}", 
+                "{7DD9ECE5-9461-498D-8721-7CBEA8111B5E}",
+                "{33077D51-EBAD-4D1C-B4A8-3B79F51DBA13}",
+                "{ADD22F05-6B4C-4344-95AD-9A1A9BA6A216}"
+            )
+
+            if($itemExclusions -notcontains $item.TemplateID) {
+                Write-Host $item.Template.FullName
+                if(!(HasReference($item))) {
+                    $item
+                    
+                    ArchiveItem($item)
+                }
+            }
+        }
+    }
+}
+
+<# 
+    Gets all the items in the media library
+    and checks to see if they have references.
+#>
+function Get-MediaItemWithNoReference {
+    $items = Get-ChildItem -Path "master:\sitecore\media library" -Recurse | 
+        Where-Object { $_.TemplateID -ne [Sitecore.TemplateIDs]::MediaFolder }
+
+    ProcessItems -Items $items -checkHelixFolders $true
+}
+
+<# 
+    Gets all the items under Project Data folder (SXA only)
+    and checks to see if they have references.
+#>
+function Get-ProjectDataWithNoReference {
+    $items = Get-ChildItem -Path "master:\sitecore\content\<project_name>\Data" -Recurse | 
+        Where-Object { $_.TemplateID -ne "{A87A00B1-E6DB-45AB-8B54-636FEC3B5523}"} # Exclude Common Folders; /sitecore/templates/Common/Folder
+
+    ProcessItems -Items $items
+}
+
+$props = @{
+    InfoTitle = "Non referenced items"
+    InfoDescription = "Lists all media or data items that are not linked to other items."
+    PageSize = 50
+}
+
+# Call Show-ListView to produce a table with the results.
+Get-Items |
+    Show-ListView @props -Property @{Label="Name"; Expression={$_.DisplayName} },
+        @{Label="Path"; Expression={$_.ItemPath} },
+        @{Label="Template"; Expression={$_.TemplateName} },
+        @{Label="TemplatePath"; Expression={$_.Template.FullName} },
+        @{Label="TemplateID"; Expression={$_.TemplateID} },
+        @{Label="Updated"; Expression={$_.__Updated} },
+        @{Label="Updated by"; Expression={$_."__Updated by"} },
+        @{Label="Created"; Expression={$_.__Created} },
+        @{Label="Created by"; Expression={$_."__Created by"} }
+
+Close-Window
+```
+
+When launching the report, an option is presented to choose between media library and SXA Data items as the root location. 
+
+There is a checkbox to decide whether running the report will perform the archiving or will be for preview mode only. By default, it will be preview only.
+
+
+![options](/static/images/preview-archive-items/options.png) 
+
+  
+
+The output will display the files that can be archived. The items presented in the report will be archived only If _“Archiving enabled"_ checkbox is selected from previous step.  
+
+  
+
+![output](/static/images/preview-archive-items/output.png) 
+
+  
+
+When the  _**ArchiveItem($item)**_ function runs, all the items found while generating the report can be found in the _Sitecore Archive_. 
+
+  
+
+![archive](/static/images/preview-archive-items/archive.png) 
+
+![archived](/static/images/preview-archive-items/archived.png) 
+
+ 
+
+Removing the unwanted Sitecore items from time to time will help with indexing performance, reducing loading time when using experience editor and when opening media dialog. 
