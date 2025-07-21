@@ -1,0 +1,172 @@
+---   
+title: Preparar archivos Sitecore WDP para realizar actividades Azure DevOps pipelines
+date: '2025-07-21'   
+tags: ['sitecore', 'azure', 'azure-devops']   
+locale: 'es'  
+draft: false   
+summary: Modificar archivos OOTB Sitecore  para realizar actividades de CI/CD usando Azure DevOps pipelines. 
+---  
+
+# Personalizaciones de Sitecore WDP
+
+Esta publicación fue creada con la intención de ayudar a los desarrolladores a preparar paquetes OOTB de Sitecore para realizar actividades de CI/CD usando Azure DevOps.
+
+Las siguientes secciones describen qué paquetes descargar desde el sitio de descargas de Sitecore, cómo eliminar referencias a bases de datos 
+usando un script hecho en PowerShell y qué archivos deben actualizarse manualmente. 
+Finalmente, cómo subir los paquetes modificados a un contenedor 
+de almacenamiento en Azure para ser utilizados posteriormente por las pipelines de CI/CD en Azure DevOps.
+
+## I - Descargar Paquetes de Sitecore
+
+Los [paquetes](https://developers.sitecore.com/downloads/Sitecore_Experience_Platform/104/Sitecore_Experience_Platform_104) de Sitecore pueden descargarse desde el sitio oficial. 
+Estos paquetes requieren modificaciones antes de poder ser utilizados en las CD pipelines. Los siguientes pasos se aplicaron a los paquetes de Sitecore 10.4 
+para los Azure App Services.
+
+Download `Sitecore 10.4.0 rev. 010422 (WDP XPScaled packages).zip` and unzip CM and CD packages:
+
+- Sitecore 10.4.0 rev. 010422 (Cloud)_cm.scwdp.zip
+- Sitecore 10.4.0 rev. 010422 (Cloud)_cd.scwdp.zip
+- Incluye otros archivos the Sitecore si es necesario.
+
+### Descargar módulos adicionales de Sitecore
+
+- Sitecore Experience Accelerator 10.4.0 rev. 08675.scwdp.zip
+- Sitecore Experience Accelerator 10.4.0 rev. 08675 CD.scwdp.zip
+- Sitecore.ManagementServices 5.2.113.scwdp.zip
+- Sitecore.PowerShell.Extensions-7.0-IAR.scwdp.zip
+
+## II - Eliminar Referencias a Bases de Datos en los Paquetes de Sitecore
+
+Descargar la herramienta [Sitecore Azure Toolkit](https://developers.sitecore.com/downloads/Sitecore_Azure_Toolkit) para eliminar referencias a bases de datos en los paquetes.
+
+Esto evita sobrescribir bases de datos y generar nuevas cadenas de conexión durante la integrtacion continua.
+
+Sigue estos pasos para eliminar las referencias a bases de datos en los paquetes:
+
+1. `Sitecore Azure Toolkit 3.0.0` fue usada para Sitecore 10.4.
+
+2. Extrae los archivos y sigue las instructiones the instalacion en [Getting Started with Sitecore Azure Toolkit](https://doc.sitecore.com/xp/en/developers/sat/30/sitecore-azure-toolkit/getting-started-with-the-sitecore-azure-toolkit.html).
+
+3. Crea los directorios fuente y de destino:
+
+- Fuente: `C:\Work\Sitecore\wdps`
+- Destino: `C:\Work\Sitecore\wdps-nodb`.
+
+4. Copia los paquetes de Sitecore en el directorio fuente.
+
+5. Usando la Sitecore Azure Toolkit puedes ejecutar el siguiente comando para cada paquete.
+
+```powershell
+Remove-SCDatabaseOperations -Path "<your_source_path_here>\$($package.Name)" -Destination <your_target_path_here>
+```
+
+6. Alternativamente, he creado un script para procesar todos los paquetes usando un solo comando.
+
+```powershell
+.\RemoveSCDatabaseOperations.ps1 -SourceDirectory "C:\Work\Sitecore\wdps" -TargetDirectory "C:\Work\Sitecore\wdps-nodb"
+```
+
+```powershell
+<#
+    Run this script to remove database configuration from Sitecore packages.
+    Updated packages will be created containing 'whihoutdb' name on them.
+#>
+
+param(
+        [Parameter(Mandatory = $true)]
+        [string]$sourceDirectory,
+
+        [Parameter(Mandatory = $true)]
+        [string]$targetDirectory
+    )
+
+# Function to remove database configuration from Sitecore packages
+function Update-SitecorePackages-NoDB {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$source,
+
+        [Parameter(Mandatory = $true)]
+        [string]$destination
+    )
+
+    $indentation = "    "
+
+    # Loop through files in the current directory
+    $files = Get-ChildItem -Path $source -File
+    Write-Host "${indentation}Files in ${source}:"
+
+    foreach ($file in $files) {
+        if(Test-Path -Path "$($source)\$($file.Name)") {
+            # This requires Sitecore Azure Toolkit to be installed
+            Remove-SCDatabaseOperations -Path "$($source)\$($file.Name)" -Destination $destination
+            Write-Host "${indentation} - $($file.Name) processed"
+        } else{
+            Write-Host "Error loading: $($source)\$($file.Name)"
+        }
+    }
+}
+
+Update-SitecorePackages-NoDB -Source $sourceDirectory -Destination $targetDirectory
+
+```
+
+## III - Procesamiento de paquetes de Sitecore
+
+Antes de ejecutar el script, debes correr los sigientes comandos para importar los modulos necessarios para correr la Sitecore Azure Toolkit.
+
+```powershell
+Import-Module .\tools\Sitecore.Cloud.Cmdlets.psm1 -Verbose
+Import-Module .\tools\Sitecore.Cloud.Cmdlets.dll -Verbose
+```
+
+Cuando el comando se esta ejecutando, los paquetes modificados se muestran en la terminal.
+
+![processed packages](/static/images/wdp-customisations/console-output.png)
+
+Los paquetes procesados seran añadidos en el directorio de destino. Cada archivo incluye .withoutdb. en el nombre.
+
+![withouth db packages](/static/images/wdp-customisations/file-explorer.png)
+
+## IV - Agregar parámetros requeridos para instalar los paquetes de Sitecore usando Azure DevOps
+
+Cada paquete contiene un archivo `parameters.xml` que carece de los siguientes parametros:
+
+- Application Path
+- IIS Web Application Name
+
+1. Usando 7-zip abre cada archivo - right click, 7-zip, Open Archive.
+
+2. Selecciona el archivo parameters.xml, right click y click en Edit (F4)
+
+![parameters file](/static/images/wdp-customisations/parameters-file.png)
+
+3. Localiza el parametro License Xml y borralo.
+
+4. Agrega los siguientes parametros al inicio del archivo.
+
+```xml
+<parameters>
+  <parameter name="Application Path" tags="iisapp" defaultValue="Default Web Site/Content">
+    <parameterEntry type="ProviderPath" scope="iisapp" match="WebSite"/>
+  </parameter>
+  <parameter name="IIS Web Application Name" defaultValue="vanilla">
+    <parameterEntry type="ProviderPath" scope="iisapp" match="WebSite"/>
+  </parameter>
+</parameters>
+```
+
+5. Guarda los cambios.
+
+6. Cuando estes usando Azure DevOps `AzureRmWebAppDeployment@4`, este task produce un error si no puede encontrar el archivo systemInfo.xml 
+ en los paquetes. El archivo existe en cada paquete pero notaras que en algunos de ellos el archivo inicia con `S` y no con  `s`. Cambia el nombre del archivo y guarda los cambios.
+
+![systemInfo](/static/images/wdp-customisations/systemInfo.png)
+
+## V - Subir los paquetes WDP modificados
+
+Usando [Azure Storage Explorer](https://azure.microsoft.com/en-us/products/storage/storage-explorer) connectate a la Azure subscription y ubica la storage account y el container donde los paquetes se guardaran.
+
+![storage explorer](/static/images/wdp-customisations/storage-explorer.png)
+
+Eso es todo, los paquetes de Sitecore estarán listos en la storage account de Azure para ser utilizados por las pipelines de Azure DevOps al desplegar Sitecore en todos los entornos.
