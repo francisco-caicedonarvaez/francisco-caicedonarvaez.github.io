@@ -1,0 +1,91 @@
+---   
+title: Previewing Presentation Details in Read-Only Mode in Sitecore
+date: '2025-08-15'   
+tags: ['sitecore']   
+locale: 'en'  
+draft: false   
+summary: Allow authors to preview an item’s presentation details without locking it first, keeping the Workbox clutter-free. 
+---  
+
+# Previewing Presentation Details in Read-Only Mode in Sitecore
+
+When working in Sitecore, content authors sometimes generate unnecessary draft items in the Workbox simply by locking items to preview their presentation details.  
+
+This custom implementation solves that problem by allowing authors to preview an item’s presentation details **without locking it first**, keeping the Workbox clutter-free.
+
+
+## Why This Matters?
+
+In the default Sitecore setup, previewing presentation details often requires locking the item. For large teams or high-volume sites, this results in a build-up of drafts in the Workbox — slowing down reviews and adding unnecessary noise.  
+
+By enabling a **read-only preview mode**, authors can quickly check layouts, renderings, and datasources without creating new workflow items.
+
+## CMS Configuration
+
+In the **Core** database, a new ribbon chunk was added:
+
+`/sitecore/content/Applications/Content Editor/Ribbons/Chunks/Layout/Read Only Details`
+
+![code db](/static/images/readonly-presentation-details/4_core-db.png) 
+
+A custom command — `contenteditor:showreadonlypresentation` — is assigned to the button’s `Click` property. This command will later open the read-only modal window.
+
+By default, Presentation Details are not enabled for Content Authoring roles. To address this, a new button **Details (read-only)** has been added to the Presentation ribbon, available to content authoring roles. This button opens the presentation details in read-only mode, without requiring the item to be locked.
+
+![ribbon](/static/images/readonly-presentation-details/1_ribbon-icon.png) 
+
+When clicked, the modal dialog displays the item’s Presentation Details for review only.
+
+### Renderings preview
+
+Authors can view all renderings and their properties.
+
+![renderings](/static/images/readonly-presentation-details/2_modal-renderings.png) 
+
+### Data Source preview
+
+Datasource values are also viewable. These fields are **disabled by default**, ensuring they remain read-only.
+
+![datasources](/static/images/readonly-presentation-details/3_modal-datasources.png) 
+
+## Sitecore Configuration
+
+Now, moving on to the solution files, a new config patch was added in the solution. The config file maps the custom command defined in the core database above.
+
+Command: contenteditor:showreadonlypresentation located in 
+
+`../App_Config/Include/MySolution/Feature/CustomComands.config`
+
+
+```xml
+<command 
+    name="contenteditor:showreadonlypresentation"
+    type="MySolution.Feature.Admin.Commands.ShowReadOnlyPresentationDetailsCommand, MySolution.Feature.Admin"/>
+```
+
+When executed, the backend triggers the modal dialog with the query string parameter `mo=readonly`.
+
+![parameters](/static/images/readonly-presentation-details/6_query-parameters.png) 
+
+The **OnLoad** method in the LayoutDetailsForm class is overriden to detect this parameter and switch the modal into read-only mode.
+
+To enforce this:
+
+ - The OK button is removed to prevent save attempts.
+ - Sitecore’s security model ensures fields remain disabled unless explicitly allowed via role configuration.
+
+![parameters received](/static/images/readonly-presentation-details/7_query-parameters-received.png)
+
+A new **CustomLayoutDetails.xml** file was created, based on the default **LayoutDetails.xml**, but with the `<CodeBeside>` type updated to point to the custom code library.
+
+OOTB xml file located in
+
+`\sitecore\shell\Applications\ContentManager\Dialogs\LayoutDetails\LayoutDetails.xml`
+
+
+![layout](/static/images/readonly-presentation-details/5_custom-layout-details.png) 
+
+
+This enhancement gives Content Editors and Approvers a faster, cleaner way to preview presentation details without cluttering the Workbox with unnecessary drafts.
+
+It's a small change, but one that can save your team time — and a few headaches — during content review cycles!

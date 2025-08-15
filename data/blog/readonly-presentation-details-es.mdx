@@ -1,0 +1,92 @@
+---   
+title: Vista previa de los Detalles de Presentación en Modo Solo Lectura en Sitecore
+date: '2025-08-15'   
+tags: ['sitecore']   
+locale: 'es'  
+draft: false   
+summary: Permitir a los autores previsualizar los detalles de presentación de un elemento sin bloquearlo primero, manteniendo el Workbox libre de desorden.
+---  
+
+# Vista previa de los Detalles de Presentación en Modo Solo Lectura en Sitecore
+
+Cuando se trabaja en Sitecore, los autores de contenido a veces generan borradores innecesarios en el Workbox simplemente por bloquear elementos para previsualizar sus detalles de presentación.
+
+Esta implementación personalizada resuelve ese problema permitiendo a los autores previsualizar los detalles de presentación de un elemento **sin bloquearlo primero**, manteniendo el Workbox libre de desorden.
+
+
+## Por qué esto es importante?
+
+En la configuración predeterminada de Sitecore, previsualizar los detalles de presentación suele requerir bloquear el elemento. En equipos grandes o sitios de alto volumen, esto genera una acumulación de borradores en el Workbox, lo que ralentiza las revisiones y añade ruido innecesario.
+
+Al habilitar un **modo de vista previa de solo lectura**, los autores pueden revisar rápidamente layouts, renderings y data sources sin crear nuevos elementos de flujo de trabajo.
+
+## Configuración del CMS
+
+En la base de datos **Core**, se agregó un nuevo grupo en la cinta:
+
+`/sitecore/content/Applications/Content Editor/Ribbons/Chunks/Layout/Read Only Details`
+
+![code db](/static/images/readonly-presentation-details/4_core-db.png) 
+
+Un comando personalizado — `contenteditor:showreadonlypresentation` — se asigna a la propiedad Click del botón. Este comando abrirá más adelante la ventana modal en modo solo lectura.
+
+De forma predeterminada, los Detalles de Presentación no están habilitados para los roles de autor de contenido. Para resolver esto, se ha agregado un nuevo botón **Detalles (solo lectura)** a la cinta de Presentación, disponible para los roles de autoría. Este botón abre los detalles de presentación en modo solo lectura, sin necesidad de bloquear el elemento.
+
+![ribbon](/static/images/readonly-presentation-details/1_ribbon-icon.png) 
+
+Al hacer click, el cuadro de diálogo modal muestra los Detalles de Presentación del elemento solo para revisión.
+
+### Vista previa de Renderings
+
+Los autores pueden ver todas las renderings y sus propiedades.
+
+![renderings](/static/images/readonly-presentation-details/2_modal-renderings.png) 
+
+### Vista previa de Data Source
+
+También se pueden visualizar los valores de origen de datos. Estos campos están **deshabilitados por defecto**, asegurando que permanezcan de solo lectura.
+
+![datasources](/static/images/readonly-presentation-details/3_modal-datasources.png)
+
+## Configuración de Sitecore
+
+En cuanto a los archivos de la solución, se agregó un nuevo config patch en la solución. El archivo de configuración mapea el comando personalizado definido en la base de datos Core anteriormente.
+
+Comando: contenteditor:showreadonlypresentation ubicado en
+
+`../App_Config/Include/MySolution/Feature/CustomComands.config`
+
+
+```xml
+<command 
+    name="contenteditor:showreadonlypresentation"
+    type="MySolution.Feature.Admin.Commands.ShowReadOnlyPresentationDetailsCommand, MySolution.Feature.Admin"/>
+```
+
+Cuando se ejecuta, el backend activa el cuadro de diálogo modal con el parámetro `mo=readonly`.
+
+![parameters](/static/images/readonly-presentation-details/6_query-parameters.png)
+
+El método **OnLoad** en la clase LayoutDetailsForm se sobrescribe para detectar este parámetro y cambiar el modal a modo solo lectura.
+
+Para reforzar esto:
+
+ - Se elimina el botón OK para evitar intentos de guardado.
+ - El modelo de seguridad de Sitecore asegura que los campos permanezcan deshabilitados a menos que se permita explícitamente mediante la configuración de roles.
+
+
+![parameters received](/static/images/readonly-presentation-details/7_query-parameters-received.png)
+
+Se creó un nuevo archivo **CustomLayoutDetails.xml**, basado en el **LayoutDetails.xml** predeterminado, pero con el tipo `<CodeBeside>` actualizado para apuntar a la biblioteca de código personalizada.
+
+Archivo XML original ubicado en:
+
+`\sitecore\shell\Applications\ContentManager\Dialogs\LayoutDetails\LayoutDetails.xml`
+
+
+![layout](/static/images/readonly-presentation-details/5_custom-layout-details.png) 
+
+
+Esta mejora ofrece a los Editores y Aprobadores de Contenido una forma más rápida y limpia de previsualizar los detalles de presentación sin llenar el Workbox con borradores innecesarios.
+
+Es un cambio pequeño, pero que puede ahorrar tiempo a tu equipo — y unas cuantas molestias — durante los ciclos de revisión de contenido!
