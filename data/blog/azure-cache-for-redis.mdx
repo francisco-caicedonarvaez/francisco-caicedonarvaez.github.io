@@ -1,0 +1,120 @@
+---   
+title: Azure Cache for Redis - StackExchange.Redis
+date: '2025-11-21'   
+tags: ['sitecore', 'azure', 'spe']   
+locale: 'en'  
+draft: false   
+summary: Connecting to and performing operations against Azure Cache for Redis using SPE (Sitecore PowerShell Extensions).
+---  
+
+When working with Sitecore solutions that rely on Azure Cache for Redis, content authors may encounter issues where cached objects fail to refresh after content updates. In this scenario, cached data was being generated during the first page visit using a custom cache service provider, which stored the result in Azure Redis Cache. After publishing Sitecore items, some keys were not being refreshed as expected.
+
+Since access to the Azure Cache for Redis resource is typically restricted for developers, the approach below focuses on removing specific keys within Sitecore using a PowerShell script. This enables developers to manage cache operations without requiring direct Azure access.
+
+![ise](/static/images/azure-redis-cache/1_ise.png)
+
+## Key points
+
+This post serves as a reference for:
+
+- Executing PowerShell scripts from the Sitecore backend.
+- Passing dynamic parameters to scripts stored in Sitecore.
+- Connecting to and performing operations against Azure Cache for Redis using SPE (Sitecore PowerShell Extensions).
+
+## PowerShell Script Execution
+
+A PowerShell script stored in the Sitecore Library accepts parameters from backend code and performs targeted cleanup operations in Azure Redis Cache. This allows control over which keys are cleared, particularly useful when cache invalidation issues occur after content changes.
+
+```powershell
+<# ===== CONFIGURATION ===== #> 
+$redisDllPath = "C:\home\site\wwwroot\bin\StackExchange.Redis.dll" # Location in AppService 
+#$redisHost = "Set in CustomCacheService class"  
+$redisPort = 6380  
+#$redisPassword = "Set in CustomCacheService class" 
+#$keysToDelete = "Set in CustomCacheService class" 
+
+<# ===== LOAD REDIS CLIENT ===== #> 
+if (-not ([System.AppDomain]::CurrentDomain.GetAssemblies() | Where-Object { $_.GetName().Name -eq "StackExchange.Redis" })) {  
+    Add-Type -Path $redisDllPath  
+}  
+
+<# ===== CONNECT TO REDIS ===== #> 
+try {  
+    $connectionString = "${redisHost}:${redisPort},password=${redisPassword},ssl=True,abortConnect=False"  
+    $redis = [StackExchange.Redis.ConnectionMultiplexer]::Connect($connectionString) 
+    $db = $redis.GetDatabase()  
+
+    foreach ($key in $keysToDelete) { 
+        Write-Output "Attempting to delete key '$key'. from Redis."  
+         
+        <# ===== DELETE KEY ===== #> 
+        $deleted = $db.KeyDelete($key)  
+
+        if ($deleted) {  
+            Write-Output "Key '$key' deleted successfully from Redis."  
+        } else {  
+            Write-Output "Key '$key' was not found in Redis."  
+        }  
+    } 
+}  
+catch {  
+    Write-Output "Error connecting to Redis or deleting key: $_"  
+}
+```
+
+## Running the Script from Backend Code
+
+In addition to running the script locally (e.g., via PowerShell ISE for testing), it can also be triggered programmatically within Sitecore. The parameters can be sourced from the site's App Settings, which allows consistent execution across multiple environments (Dev, QA, UAT, Prod).
+
+This pattern ensures that scripts remain reusable, environment agnostic, and secure.
+
+Script can be triggered from Scheduled tasks, Webhooks or manually, from a custom Sitecore module.
+
+```powershell
+CustomCacheService.cs
+...
+
+using Spe.Core.Host; 
+using Spe.Core.Settings; 
+
+private void ClearRedisCacheByKey(IEnumerable<string> keys) 
+{ 
+        // Get PowerShell script from Sitecore library 
+        // /sitecore/system/Modules/PowerShell/Script Library/<custom_location>
+        Sitecore.Data.Database master = Sitecore.Data.Database.GetDatabase("master"); 
+        var item = master.GetItem(Constants.PowerShellItemId); 
+        var session = ScriptSessionManager.NewSession(ApplicationNames.Default, false); 
+
+        if (item != null) 
+        { 
+            var redisPassword = ConfigurationManager.AppSettings["RedisPassword"]; 
+            var redisHost = ConfigurationManager.AppSettings["RedisHost"]; 
+
+            session.SetVariable("redisHost", redisHost); 
+            session.SetVariable("redisPassword", redisPassword); 
+            session.SetVariable("keysToDelete", keys.ToArray<string>()); 
+
+            var output = session.ExecuteScriptPart(item, false); 
+            var result = string.Join(" | ", output);  
+
+            ...
+            // Write output to logs or custom page depending on implementation
+        } 
+        
+        ... 
+} 
+```
+
+## Passing Parameters to the Script
+
+Once the script item is retrieved from the Sitecore content tree, a new PowerShell session is created through `ScriptSessionManager`. The backend can then pass runtime variables to the script using the `SetVariable()` method before execution.
+
+This makes it easy to:
+
+- Send credentials
+- Provide key prefixes or specific cache identifiers
+- Swap environment specific configuration at runtime
+
+![set variables](/static/images/azure-redis-cache/2_set_variables.png)
+
+By combining Sitecore PowerShell Extensions with backend controlled script execution, developers can manage Azure Redis Cache operations safely and effectively when direct Azure access is limited. 
