@@ -6,7 +6,7 @@ const siteMetadata = {
   description: '',
   language: 'en-us',
   theme: 'system', // system, dark or light
-  siteUrl: 'https://francisco-blog.vercel.app',
+  siteUrl: 'https://franciscocaicedonarvaez.blog',//'https://francisco-blog.vercel.app',
   siteRepo: 'https://github.com/francisco-caicedonarvaez/francisco-caicedonarvaez.github.io',
   siteLogo: '/static/images/logo.png',
   socialBanner: '/static/images/og-image.png',
