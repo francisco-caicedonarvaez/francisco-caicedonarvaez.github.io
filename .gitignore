@@ -26,7 +26,8 @@ public/sitemap.xml
 /public/feed.xml
 
 # search
-/public/search.json
+/public/en/search.json
+/public/es/search.json
 
 # misc
 .DS_Store

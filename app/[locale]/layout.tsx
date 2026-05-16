@@ -1,4 +1,5 @@
 import { LocaleProvider } from '@/contexts/LocaleContext'
+import { LocaleSearchProvider } from '@/components/LocaleSearchProvider'
 import { ReactNode } from 'react'
 
 type Locale = 'en' | 'es'
@@ -15,5 +16,9 @@ export default async function LocaleLayout({
   params: Promise<{ locale: Locale }>
 }) {
   const { locale } = await params
-  return <LocaleProvider locale={locale}>{children}</LocaleProvider>
+  return (
+    <LocaleProvider locale={locale}>
+      <LocaleSearchProvider>{children}</LocaleSearchProvider>
+    </LocaleProvider>
+  )
 }

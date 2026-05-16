@@ -101,11 +101,19 @@ function createSearchIndex(allBlogs) {
     siteMetadata?.search?.provider === 'kbar' &&
     siteMetadata.search.kbarConfig.searchDocumentsPath
   ) {
-    writeFileSync(
-      `public/${path.basename(siteMetadata.search.kbarConfig.searchDocumentsPath)}`,
-      JSON.stringify(allCoreContent(sortPosts(allBlogs)))
-    )
-    console.log('Local search index generated...')
+    const locales = siteMetadata.locales || ['en']
+
+    // Create locale-specific search indexes
+    locales.forEach((locale) => {
+      const localeBlogPosts = allBlogs.filter((blog) => (blog.locale || 'en') === locale)
+      const fileName = 'search.json'
+
+      writeFileSync(
+        `public/${locale}/${fileName}`,
+        JSON.stringify(allCoreContent(sortPosts(localeBlogPosts)))
+      )
+      console.log(`Local search index generated for locale: ${locale}`)
+    })
   }
 }
 
