@@ -1,0 +1,13 @@
+.git
+.next
+node_modules
+.env.local
+.env.*.local
+dist
+build
+.DS_Store
+.idea
+.vscode
+*.log
+.yarn/cache
+.yarn/install-state.gz
