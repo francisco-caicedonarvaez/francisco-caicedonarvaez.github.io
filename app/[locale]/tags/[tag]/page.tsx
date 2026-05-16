@@ -3,12 +3,19 @@ import { allCoreContent, sortPosts } from 'pliny/utils/contentlayer'
 import siteMetadata from '@/data/siteMetadata'
 import ListLayout from '@/layouts/ListLayoutWithTags'
 import { allBlogs } from 'contentlayer/generated'
-import tagData from 'app/[locale]/tag-data.json'
-import { genPageMetadata } from 'app/[locale]/seo'
+import tagData from '@/app/tag-data.json'
+import { genPageMetadata } from '@/app/seo'
 import { Metadata } from 'next'
-import { languages } from '../../../messages/settings'
 
-export async function generateMetadata({ params }: { params: { tag: string } }): Promise<Metadata> {
+type Locale = 'en' | 'es'
+type TagData = Record<string, Record<string, number>>
+
+const POSTS_PER_PAGE = 5
+
+export async function generateMetadata(props: {
+  params: Promise<{ locale: Locale; tag: string }>
+}): Promise<Metadata> {
+  const params = await props.params
   const tag = decodeURI(params.tag)
   return genPageMetadata({
     title: tag,
@@ -16,31 +23,59 @@ export async function generateMetadata({ params }: { params: { tag: string } }):
     alternates: {
       canonical: './',
       types: {
-        'application/rss+xml': `${siteMetadata.siteUrl}/tags/${tag}/feed.xml`,
+        'application/rss+xml': `${siteMetadata.siteUrl}/${params.locale}/tags/${tag}/feed.xml`,
       },
     },
   })
 }
 
 export const generateStaticParams = async () => {
-  const tagCounts = tagData as Record<string, number>
-  const tagKeys = Object.keys(tagCounts)
-  const paths = tagKeys.map((tag) => ({
-    tag: tag,
-  }))
-  languages.map((locale) => ({ locale }))
-  return paths
+  const allTagData = tagData as any as TagData
+  const locales: Locale[] = ['en', 'es']
+  const params: Array<{ locale: Locale; tag: string }> = []
+
+  locales.forEach((locale) => {
+    const tagCounts = allTagData[locale] || {}
+    const tagKeys = Object.keys(tagCounts)
+    tagKeys.forEach((tag) => {
+      params.push({
+        locale,
+        tag: encodeURI(tag),
+      })
+    })
+  })
+
+  return params
 }
 
-export default function TagPage({ params }: { params: { tag: string; locale: string } }) {
+export default async function TagPage(props: { params: Promise<{ locale: Locale; tag: string }> }) {
+  const params = await props.params
   const tag = decodeURI(params.tag)
-  // Capitalize first letter and convert space to dash
   const title = tag[0].toUpperCase() + tag.split(' ').join('-').slice(1)
-  const filteredBlogs = allBlogs.filter((blog) => blog.locale === params.locale)
   const filteredPosts = allCoreContent(
     sortPosts(
-      filteredBlogs.filter((post) => post.tags && post.tags.map((t) => slug(t)).includes(tag))
+      allBlogs.filter(
+        (post) =>
+          ((post as any).locale || 'en') === params.locale &&
+          post.tags &&
+          post.tags.map((t) => slug(t)).includes(tag)
+      )
     )
   )
-  return <ListLayout posts={filteredPosts} title={title} locale={params.locale} />
+  const totalPages = Math.ceil(filteredPosts.length / POSTS_PER_PAGE)
+  const initialDisplayPosts = filteredPosts.slice(0, POSTS_PER_PAGE)
+  const pagination = {
+    currentPage: 1,
+    totalPages: totalPages,
+  }
+
+  return (
+    <ListLayout
+      posts={filteredPosts}
+      initialDisplayPosts={initialDisplayPosts}
+      pagination={pagination}
+      title={title}
+      locale={params.locale}
+    />
+  )
 }

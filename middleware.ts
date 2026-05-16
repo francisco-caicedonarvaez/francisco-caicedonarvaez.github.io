@@ -1,11 +1,43 @@
-import createMiddleware from 'next-intl/middleware';
+import { NextRequest, NextResponse } from 'next/server'
 
-export default createMiddleware({
-  locales: ['en', 'es'],
-  defaultLocale: 'en'
-})
+const defaultLocale = 'en'
+
+export function middleware(request: NextRequest) {
+  const pathname = request.nextUrl.pathname
+
+  // Public folder files should never have locale routing
+  if (pathname.startsWith('/public') || pathname.startsWith('/static')) {
+    return NextResponse.next()
+  }
+
+  // Redirect paths ending with -es to remove the -es suffix
+  if (pathname.match(/-es\/$/)) {
+    const cleanPathname = pathname.replace(/-es\/$/, '/')
+    return NextResponse.redirect(new URL(cleanPathname, request.url))
+  }
+
+  // Check if pathname starts with a locale
+  const pathnameHasLocale = /^\/(en|es)/.test(pathname)
+
+  if (pathnameHasLocale) {
+    return NextResponse.next()
+  }
+
+  // Redirect non-locale paths to /en/{path}
+  return NextResponse.redirect(new URL(`/${defaultLocale}${pathname}`, request.url))
+}
 
 export const config = {
-  // Skip all paths that should not be internationalized
-  matcher: ['/((?!api|_next|_vercel|static|.*\\..*).*)']
+  matcher: [
+    /*
+     * Match all request paths except for the ones starting with:
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     * - public folder (static assets - no locale routing)
+     * - static folder (static assets - no locale routing)
+     * - api routes
+     */
+    '/((?!_next/static|_next/image|favicon.ico|public|static|api).*)',
+  ],
 }

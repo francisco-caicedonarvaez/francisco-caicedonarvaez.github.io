@@ -1,6 +1,9 @@
-import { redirect } from 'next/navigation'
+import { sortPosts, allCoreContent } from 'pliny/utils/contentlayer'
+import { allBlogs } from 'contentlayer/generated'
+import Main from './Main'
 
-// This page only renders when the app is built statically (output: 'export')
-export default function RootPage() {
-  redirect('/en')
+export default async function Page() {
+  const sortedPosts = sortPosts(allBlogs)
+  const posts = allCoreContent(sortedPosts)
+  return <Main posts={posts} />
 }

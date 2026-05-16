@@ -2,26 +2,32 @@ import { Authors, allAuthors } from 'contentlayer/generated'
 import { MDXLayoutRenderer } from 'pliny/mdx-components'
 import AuthorLayout from '@/layouts/AuthorLayout'
 import { coreContent } from 'pliny/utils/contentlayer'
-import { genPageMetadata } from 'app/[locale]/seo'
-import { languages } from '../../messages/settings'
-import { getTranslation } from '../../util/util'
+import { genPageMetadata } from '@/app/seo'
+
+type Locale = 'en' | 'es'
 
 export async function generateStaticParams() {
-  return languages.map((locale) => ({ locale }))
+  return [{ locale: 'en' }, { locale: 'es' }]
 }
 
 export const metadata = genPageMetadata({ title: 'About' })
 
-export default async function Page({ params: { locale } }) {
-  const author = allAuthors.find(
-    (p) => p.slug === (locale === 'en' ? 'default' : 'default-es')
-  ) as Authors
+export default async function Page(props: { params: Promise<{ locale: Locale }> }) {
+  const params = await props.params
+  // Use default author for the current locale
+  const author = allAuthors.find((p) => p.slug === 'default' && p.locale === params.locale)
+
+  if (!author) {
+    throw new Error(
+      `Author not found for locale: ${params.locale}. Available authors: ${allAuthors.map((a) => `${a.slug}(${a.locale})`).join(', ')}`
+    )
+  }
+
   const mainContent = coreContent(author)
-  const t = await getTranslation(locale)
 
   return (
     <>
-      <AuthorLayout content={mainContent} title={t('AboutPage.title')}>
+      <AuthorLayout content={mainContent} locale={params.locale}>
         <MDXLayoutRenderer code={author.body.code} />
       </AuthorLayout>
     </>
