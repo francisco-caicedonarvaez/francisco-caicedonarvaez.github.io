@@ -19,7 +19,7 @@ RUN yarn run build
 CMD ["yarn", "run", "serve"]
 
 # build image in current directory
-# docker build -t nextjs_docker:dev .
+# docker build -t nextjs-my-blog:20260516 .
 
 # run a container
-# docker run --publish 3000:3000 nextjs_docker:dev
+# docker run --publish 3000:3000 nextjs-my-blog:20260516
