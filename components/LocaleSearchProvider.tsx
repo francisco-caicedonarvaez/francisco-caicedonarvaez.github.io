@@ -14,7 +14,7 @@ export function LocaleSearchProvider({ children }: { children: ReactNode }) {
     return {
       ...siteMetadata.search,
       kbarConfig: {
-        ...siteMetadata.search?.kbarConfig,
+        ...(siteMetadata.search as any)?.kbarConfig,
         searchDocumentsPath: searchFileName,
       },
     } as SearchConfig
