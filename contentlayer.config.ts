@@ -108,9 +108,15 @@ function createSearchIndex(allBlogs) {
       const localeBlogPosts = allBlogs.filter((blog) => (blog.locale || 'en') === locale)
       const fileName = 'search.json'
 
+      // Add locale prefix to paths in search results
+      const postsWithLocalePath = localeBlogPosts.map((post) => ({
+        ...post,
+        path: `${locale}/${post.path}`,
+      }))
+
       writeFileSync(
         `public/${locale}/${fileName}`,
-        JSON.stringify(allCoreContent(sortPosts(localeBlogPosts)))
+        JSON.stringify(allCoreContent(sortPosts(postsWithLocalePath)))
       )
       console.log(`Local search index generated for locale: ${locale}`)
     })
