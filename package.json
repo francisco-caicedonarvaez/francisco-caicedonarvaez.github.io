@@ -5,7 +5,7 @@
   "scripts": {
     "start": "npm run generate_content && next dev",
     "dev": "npm run generate_content && next dev",
-    "build": "next build && cross-env NODE_OPTIONS='--experimental-json-modules' node ./scripts/postbuild.mjs",
+    "build": "npm run generate_content && next build && cross-env NODE_OPTIONS='--experimental-json-modules' node ./scripts/postbuild.mjs",
     "serve": "next start",
     "analyze": "ANALYZE=true next build",
     "lint": "eslint --fix app components layouts scripts",
