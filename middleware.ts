@@ -10,12 +10,6 @@ export function middleware(request: NextRequest) {
     return NextResponse.next()
   }
 
-  // Redirect paths ending with -es to remove the -es suffix
-  if (pathname.match(/-es\/$/)) {
-    const cleanPathname = pathname.replace(/-es\/$/, '/')
-    return NextResponse.redirect(new URL(cleanPathname, request.url))
-  }
-
   // Check if pathname starts with a locale
   const pathnameHasLocale = /^\/(en|es)/.test(pathname)
 

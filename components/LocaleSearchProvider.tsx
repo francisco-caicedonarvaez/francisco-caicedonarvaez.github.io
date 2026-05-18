@@ -6,7 +6,7 @@ import { useLocale } from '@/contexts/LocaleContext'
 import siteMetadata from '@/data/siteMetadata'
 
 export function LocaleSearchProvider({ children }: { children: ReactNode }) {
-  const locale = useLocale()
+  const locale = useLocale() || 'en' // Fallback to 'en' if locale is not available
 
   const searchConfig = useMemo(() => {
     const searchFileName = `${locale}/search.json`
