@@ -1,77 +1,62 @@
 'use client'
 
-import Image from '@/components/Image'
-import { useLocale, useTranslations } from 'next-intl'
-import { usePathname, useRouter } from 'next-intl/client'
-import { ChangeEvent, useTransition } from 'react'
-import { languages } from '../app/messages/settings'
-import React from 'react'
+import Link from 'next/link'
+import Image from 'next/image'
+import AustralianFlag from '../public/static/images/australia_flag_icon.png'
+import ColombianFlag from '../public/static/images/colombia_flag_icon.png'
+import { usePathname } from 'next/navigation'
 
-const ShowFlag = () => {
-  const locale = useLocale()
-  let languageFlag = '/static/images/australia_flag_icon.png'
+const ShowFlag = ({ locale, href }: { locale?: 'en' | 'es'; href: string }) => {
+  if (!locale) return null
+
+  let languageFlag = AustralianFlag
 
   if (locale === 'es') {
-    languageFlag = '/static/images/colombia_flag_icon.png'
-  } else {
-    languageFlag = '/static/images/australia_flag_icon.png'
+    languageFlag = ColombianFlag
   }
   return (
-    <span className="p-2.5">
-      <Image src={languageFlag} alt="au" width={20} height={10} />
-    </span>
+    <Link href={href}>
+      <span className="p-2.5">
+        <Image src={languageFlag} alt="flag" width={20} height={10} />
+      </span>
+    </Link>
   )
 }
 
-const LanguageSwitcher = () => {
-  const t = useTranslations('LocaleSwitcher')
-  const [isPending, startTransition] = useTransition()
-  const locale = useLocale()
-  const router = useRouter()
+export default function LanguageSwitcher({ locale }: { locale?: 'en' | 'es' }) {
   const pathname = usePathname()
 
-  function onSelectChange(event: ChangeEvent<HTMLSelectElement>) {
-    const nextLocale = event.target.value
-    startTransition(() => {
-      // update blog post URL with locale
-      let url =
-        pathname.endsWith('-es/') && nextLocale === 'en' ? pathname.replace('-es', '') : pathname
+  if (!locale) return null
 
-      if (
-        url.startsWith('/blog/') &&
-        !url.endsWith('/blog/') &&
-        !url.endsWith('-es/') &&
-        nextLocale === 'es'
-      ) {
-        const lastIndex = url.lastIndexOf('/')
-        const replacement = '-es/'
-        url = url.slice(0, lastIndex) + replacement + url.slice(lastIndex + 1)
-      }
-
-      router.replace(url, { locale: nextLocale })
-    })
-  }
+  // Get the path without the locale prefix
+  const pathWithoutLocale = pathname.replace(`/${locale}`, '') || '/'
+  const otherLocale = locale === 'en' ? 'es' : 'en'
+  const href = `/${otherLocale}${pathWithoutLocale}`
 
   return (
-    <>
-      <div className="inline-flex dark:bg-gray-950">
-        <ShowFlag />
-        <label>
-          <select
-            className="inline-flex bg-transparent pl-3 pr-7 text-sm border-0 border-b-1 border-gray-200 appearance-none focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-950 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
-            defaultValue={locale}
-            disabled={isPending}
-            onChange={onSelectChange}
+    <div className="flex items-center space-x-2">
+      <ShowFlag locale={locale} href={href} />
+      {locale === 'en' ? (
+        <>
+          <span className="text-sm font-medium">EN</span>
+          <Link
+            href={href}
+            className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
           >
-            {languages.map((cur) => (
-              <option key={cur} value={cur}>
-                {t('locale', { locale: cur })}
-              </option>
-            ))}
-          </select>
-        </label>
-      </div>
-    </>
+            ES
+          </Link>
+        </>
+      ) : (
+        <>
+          <Link
+            href={href}
+            className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
+          >
+            EN
+          </Link>
+          <span className="text-sm font-medium">ES</span>
+        </>
+      )}
+    </div>
   )
 }
-export default LanguageSwitcher

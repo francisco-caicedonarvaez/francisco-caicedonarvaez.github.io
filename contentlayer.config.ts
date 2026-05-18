@@ -1,11 +1,13 @@
-import { defineDocumentType, ComputedFields, makeSource } from 'contentlayer/source-files'
+import { defineDocumentType, ComputedFields, makeSource } from 'contentlayer2/source-files'
 import { writeFileSync } from 'fs'
 import readingTime from 'reading-time'
-import GithubSlugger from 'github-slugger'
+import { slug } from 'github-slugger'
 import path from 'path'
+import { fromHtmlIsomorphic } from 'hast-util-from-html-isomorphic'
 // Remark packages
 import remarkGfm from 'remark-gfm'
 import remarkMath from 'remark-math'
+import { remarkAlert } from 'remark-github-blockquote-alert'
 import {
   remarkExtractFrontmatter,
   remarkCodeTitles,
@@ -16,20 +18,47 @@ import {
 import rehypeSlug from 'rehype-slug'
 import rehypeAutolinkHeadings from 'rehype-autolink-headings'
 import rehypeKatex from 'rehype-katex'
+import rehypeKatexNoTranslate from 'rehype-katex-notranslate'
 import rehypeCitation from 'rehype-citation'
 import rehypePrismPlus from 'rehype-prism-plus'
 import rehypePresetMinify from 'rehype-preset-minify'
 import siteMetadata from './data/siteMetadata'
 import { allCoreContent, sortPosts } from 'pliny/utils/contentlayer.js'
+import prettier from 'prettier'
 
 const root = process.cwd()
 const isProduction = process.env.NODE_ENV === 'production'
+
+// heroicon mini link
+const icon = fromHtmlIsomorphic(
+  `
+  <span class="content-header-link">
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5 linkicon">
+  <path d="M12.232 4.232a2.5 2.5 0 0 1 3.536 3.536l-1.225 1.224a.75.75 0 0 0 1.061 1.06l1.224-1.224a4 4 0 0 0-5.656-5.656l-3 3a4 4 0 0 0 .225 5.865.75.75 0 0 0 .977-1.138 2.5 2.5 0 0 1-.142-3.667l3-3Z" />
+  <path d="M11.603 7.963a.75.75 0 0 0-.977 1.138 2.5 2.5 0 0 1 .142 3.667l-3 3a2.5 2.5 0 0 1-3.536-3.536l1.225-1.224a.75.75 0 0 0-1.061-1.06l-1.224 1.224a4 4 0 1 0 5.656 5.656l3-3a4 4 0 0 0-.225-5.865Z" />
+  </svg>
+  </span>
+`,
+  { fragment: true }
+)
 
 const computedFields: ComputedFields = {
   readingTime: { type: 'json', resolve: (doc) => readingTime(doc.body.raw) },
   slug: {
     type: 'string',
-    resolve: (doc) => doc._raw.flattenedPath.replace(/^.+?(\/)/, ''),
+    resolve: (doc) => {
+      // Extract slug from flattened path and remove -es suffix if present
+      const basePath = doc._raw.flattenedPath.replace(/^.+?(\/)/, '')
+      return basePath.replace(/-es$/, '')
+    },
+  },
+  locale: {
+    type: 'string',
+    resolve: (doc) => {
+      // Extract locale from filename: -es suffix = Spanish, otherwise English
+      const basePath = doc._raw.flattenedPath.replace(/^.+?(\/)/, '')
+      return basePath.endsWith('-es') ? 'es' : 'en'
+    },
   },
   path: {
     type: 'string',
@@ -39,27 +68,32 @@ const computedFields: ComputedFields = {
     type: 'string',
     resolve: (doc) => doc._raw.sourceFilePath,
   },
-  toc: { type: 'string', resolve: (doc) => extractTocHeadings(doc.body.raw) },
+  toc: { type: 'json', resolve: (doc) => extractTocHeadings(doc.body.raw) },
 }
 
 /**
  * Count the occurrences of all tags across blog posts and write to json file
  */
-function createTagCount(allBlogs) {
-  const tagCount: Record<string, number> = {}
+async function createTagCount(allBlogs) {
+  const tagCount: Record<string, Record<string, number>> = {
+    en: {},
+    es: {},
+  }
   allBlogs.forEach((file) => {
     if (file.tags && (!isProduction || file.draft !== true)) {
+      const locale = file.locale || 'en'
       file.tags.forEach((tag) => {
-        const formattedTag = GithubSlugger.slug(tag)
-        if (formattedTag in tagCount) {
-          tagCount[formattedTag] += 1
+        const formattedTag = slug(tag)
+        if (formattedTag in tagCount[locale]) {
+          tagCount[locale][formattedTag] += 1
         } else {
-          tagCount[formattedTag] = 1
+          tagCount[locale][formattedTag] = 1
         }
       })
     }
   })
-  writeFileSync('./app/tag-data.json', JSON.stringify(tagCount))
+  const formatted = await prettier.format(JSON.stringify(tagCount, null, 2), { parser: 'json' })
+  writeFileSync('./app/tag-data.json', formatted)
 }
 
 function createSearchIndex(allBlogs) {
@@ -67,11 +101,19 @@ function createSearchIndex(allBlogs) {
     siteMetadata?.search?.provider === 'kbar' &&
     siteMetadata.search.kbarConfig.searchDocumentsPath
   ) {
-    writeFileSync(
-      `public/${siteMetadata.search.kbarConfig.searchDocumentsPath}`,
-      JSON.stringify(allCoreContent(sortPosts(allBlogs)))
-    )
-    console.log('Local search index generated...')
+    const locales = siteMetadata.locales || ['en']
+
+    // Create locale-specific search indexes
+    locales.forEach((locale) => {
+      const localeBlogPosts = allBlogs.filter((blog) => (blog.locale || 'en') === locale)
+      const fileName = 'search.json'
+
+      writeFileSync(
+        `public/${locale}/${fileName}`,
+        JSON.stringify(allCoreContent(sortPosts(localeBlogPosts)))
+      )
+      console.log(`Local search index generated for locale: ${locale}`)
+    })
   }
 }
 
@@ -83,21 +125,21 @@ export const Blog = defineDocumentType(() => ({
     title: { type: 'string', required: true },
     date: { type: 'date', required: true },
     tags: { type: 'list', of: { type: 'string' }, default: [] },
-    locale: { type: 'string', required: true },
     lastmod: { type: 'date' },
     draft: { type: 'boolean' },
     summary: { type: 'string' },
-    images: { type: 'list', of: { type: 'string' } },
+    images: { type: 'json' },
     authors: { type: 'list', of: { type: 'string' } },
     layout: { type: 'string' },
     bibliography: { type: 'string' },
     canonicalUrl: { type: 'string' },
+    locale: { type: 'string', default: 'en' },
   },
   computedFields: {
     ...computedFields,
     structuredData: {
       type: 'json',
-      resolve: (doc) => ({
+      resolve: (doc: any) => ({
         '@context': 'https://schema.org',
         '@type': 'BlogPosting',
         headline: doc.title,
@@ -105,8 +147,7 @@ export const Blog = defineDocumentType(() => ({
         dateModified: doc.lastmod || doc.date,
         description: doc.summary,
         image: doc.images ? doc.images[0] : siteMetadata.socialBanner,
-        url: `${siteMetadata.siteUrl}/${doc._raw.flattenedPath}`,
-        author: doc.authors,
+        url: `${siteMetadata.siteUrl}/${doc.locale}/blog/${doc.slug}`,
       }),
     },
   },
@@ -123,9 +164,11 @@ export const Authors = defineDocumentType(() => ({
     company: { type: 'string' },
     email: { type: 'string' },
     twitter: { type: 'string' },
+    bluesky: { type: 'string' },
     linkedin: { type: 'string' },
     github: { type: 'string' },
     layout: { type: 'string' },
+    locale: { type: 'string', default: 'en' },
   },
   computedFields,
 }))
@@ -141,11 +184,22 @@ export default makeSource({
       remarkCodeTitles,
       remarkMath,
       remarkImgToJsx,
+      remarkAlert,
     ],
     rehypePlugins: [
       rehypeSlug,
-      rehypeAutolinkHeadings,
+      [
+        rehypeAutolinkHeadings,
+        {
+          behavior: 'prepend',
+          headingProperties: {
+            className: ['content-header'],
+          },
+          content: icon,
+        },
+      ],
       rehypeKatex,
+      rehypeKatexNoTranslate,
       [rehypeCitation, { path: path.join(root, 'data') }],
       [rehypePrismPlus, { defaultLanguage: 'js', ignoreMissing: true }],
       rehypePresetMinify,

@@ -1,0 +1,20 @@
+{
+  "en": {
+    "sitecore": 6,
+    "azure": 2,
+    "spe": 3,
+    "xm-cloud": 1,
+    "next-js": 2,
+    "github": 1,
+    "azure-devops": 1
+  },
+  "es": {
+    "sitecore": 6,
+    "azure": 2,
+    "spe": 3,
+    "xm-cloud": 1,
+    "next-js": 2,
+    "github": 1,
+    "azure-devops": 1
+  }
+}

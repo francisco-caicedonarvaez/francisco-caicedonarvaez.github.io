@@ -12,6 +12,9 @@ import PostLayout from '@/layouts/PostLayout'
 import PostBanner from '@/layouts/PostBanner'
 import { Metadata } from 'next'
 import siteMetadata from '@/data/siteMetadata'
+import { notFound } from 'next/navigation'
+
+type Locale = 'en' | 'es'
 
 const defaultLayout = 'PostLayout'
 const layouts = {
@@ -20,16 +23,17 @@ const layouts = {
   PostBanner,
 }
 
-export async function generateMetadata({
-  params,
-}: {
-  params: { slug: string[] }
+export async function generateMetadata(props: {
+  params: Promise<{ locale: Locale; slug: string[] }>
 }): Promise<Metadata | undefined> {
+  const params = await props.params
   const slug = decodeURI(params.slug.join('/'))
-  const post = allBlogs.find((p) => p.slug === slug)
+  const post = allBlogs.find(
+    (p) => p.slug === slug && ((p as any).locale || 'en') === params.locale
+  )
   const authorList = post?.authors || ['default']
   const authorDetails = authorList.map((author) => {
-    const authorResults = allAuthors.find((p) => p.slug === author)
+    const authorResults = allAuthors.find((p) => p.locale === params.locale)
     return coreContent(authorResults as Authors)
   })
   if (!post) {
@@ -45,9 +49,13 @@ export async function generateMetadata({
   }
   const ogImages = imageList.map((img) => {
     return {
-      url: img.includes('http') ? img : siteMetadata.siteUrl + img,
+      url: img && img.includes('http') ? img : siteMetadata.siteUrl + img,
     }
   })
+
+  const postUrl = `${siteMetadata.siteUrl}/${params.locale}/blog/${slug}`
+  const otherLocale = params.locale === 'en' ? 'es' : 'en'
+  const otherLocaleUrl = `${siteMetadata.siteUrl}/${otherLocale}/blog/${slug}`
 
   return {
     title: post.title,
@@ -56,11 +64,11 @@ export async function generateMetadata({
       title: post.title,
       description: post.summary,
       siteName: siteMetadata.title,
-      locale: 'en_US',
+      locale: params.locale === 'es' ? 'es_ES' : 'en_US',
       type: 'article',
       publishedTime: publishedAt,
       modifiedTime: modifiedAt,
-      url: './',
+      url: postUrl,
       images: ogImages,
       authors: authors.length > 0 ? authors : [siteMetadata.author],
     },
@@ -70,42 +78,54 @@ export async function generateMetadata({
       description: post.summary,
       images: imageList,
     },
+    alternates: {
+      canonical: postUrl,
+      languages: {
+        en: `${siteMetadata.siteUrl}/en/blog/${slug}`,
+        es: `${siteMetadata.siteUrl}/es/blog/${slug}`,
+      },
+    },
   }
 }
 
 export const generateStaticParams = async () => {
-  const paths = allBlogs.map((p) => ({ slug: p.slug.split('/') }))
+  const locales: Locale[] = ['en', 'es']
+  const params: Array<{ locale: Locale; slug: string[] }> = []
 
-  return paths
+  locales.forEach((locale) => {
+    allBlogs
+      .filter((blog) => ((blog as any).locale || 'en') === locale)
+      .forEach((p) => {
+        params.push({
+          locale,
+          slug: p.slug.split('/').map((name) => decodeURI(name)),
+        })
+      })
+  })
+
+  return params
 }
 
-export default async function Page({ params }: { params: { slug: string[] } }) {
+export default async function Page(props: { params: Promise<{ locale: Locale; slug: string[] }> }) {
+  const params = await props.params
   const slug = decodeURI(params.slug.join('/'))
-  // Filter out drafts in production
-  const filteredBlogs = allBlogs.filter(
-    (blog) => blog.locale === (slug.endsWith('-es') ? 'es' : 'en')
+  // Filter out drafts in production and match by locale
+  const sortedCoreContents = allCoreContent(
+    sortPosts(allBlogs.filter((blog) => ((blog as any).locale || 'en') === params.locale))
   )
-  const sortedCoreContents = allCoreContent(sortPosts(filteredBlogs))
   const postIndex = sortedCoreContents.findIndex((p) => p.slug === slug)
   if (postIndex === -1) {
-    return (
-      <div className="mt-24 text-center">
-        <PageTitle>
-          Under Construction{' '}
-          <span role="img" aria-label="roadwork sign">
-            🚧
-          </span>
-        </PageTitle>
-      </div>
-    )
+    return notFound()
   }
 
   const prev = sortedCoreContents[postIndex + 1]
   const next = sortedCoreContents[postIndex - 1]
-  const post = allBlogs.find((p) => p.slug === slug) as Blog
+  const post = allBlogs.find(
+    (p) => p.slug === slug && ((p as any).locale || 'en') === params.locale
+  ) as Blog
   const authorList = post?.authors || ['default']
   const authorDetails = authorList.map((author) => {
-    const authorResults = allAuthors.find((p) => p.slug === author)
+    const authorResults = allAuthors.find((p) => p.locale === params.locale)
     return coreContent(authorResults as Authors)
   })
   const mainContent = coreContent(post)
@@ -125,7 +145,13 @@ export default async function Page({ params }: { params: { slug: string[] } }) {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <Layout content={mainContent} authorDetails={authorDetails} next={next} prev={prev}>
+      <Layout
+        content={mainContent}
+        authorDetails={authorDetails}
+        next={next}
+        prev={prev}
+        locale={params.locale}
+      >
         <MDXLayoutRenderer code={post.body.code} components={components} toc={post.toc} />
       </Layout>
     </>

@@ -3,7 +3,7 @@ import Image from '@/components/Image'
 import Bleed from 'pliny/ui/Bleed'
 import { CoreContent } from 'pliny/utils/contentlayer'
 import type { Blog } from 'contentlayer/generated'
-import Comments from '@/components/Comments'
+//import Comments from '@/components/Comments'
 import Link from '@/components/Link'
 import PageTitle from '@/components/PageTitle'
 import SectionContainer from '@/components/SectionContainer'
@@ -30,21 +30,21 @@ export default function PostMinimal({ content, next, prev, children }: LayoutPro
           <div className="space-y-1 pb-10 text-center dark:border-gray-700">
             <div className="w-full">
               <Bleed>
-                <div className="aspect-[2/1] w-full relative">
+                <div className="relative aspect-2/1 w-full">
                   <Image src={displayImage} alt={title} fill className="object-cover" />
                 </div>
               </Bleed>
             </div>
-            <div className="pt-10 relative">
+            <div className="relative pt-10">
               <PageTitle>{title}</PageTitle>
             </div>
           </div>
-          <div className="prose max-w-none py-4 dark:prose-invert">{children}</div>
-          {siteMetadata.comments && (
-            <div className="pb-6 pt-6 text-center text-gray-700 dark:text-gray-300" id="comment">
+          <div className="prose dark:prose-invert max-w-none py-4">{children}</div>
+          {/* {siteMetadata.comments && (
+            <div className="pt-6 pb-6 text-center text-gray-700 dark:text-gray-300" id="comment">
               <Comments slug={slug} />
             </div>
-          )}
+          )} */}
           <footer>
             <div className="flex flex-col text-sm font-medium sm:flex-row sm:justify-between sm:text-base">
               {prev && prev.path && (
