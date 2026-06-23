@@ -1,0 +1,266 @@
+---
+title: Limitando Resultados de Búsqueda con Page Hard Filters en Sitecore Search
+date: '2026-06-23'
+tags: ['sitecore']
+locale: 'es'
+draft: false
+summary: No todo cuadro de búsqueda en tu sitio web debería buscar en todo el contenido. Averigua mas hacerca de Hard Filters para definir el scope de tus resultados de busqueda.
+---
+
+# Limitando Resultados de Búsqueda con Page Hard Filters en Sitecore Search
+
+No todo cuadro de búsqueda en tu sitio web debería buscar en todo el contenido. Una página `/news` de Brisbane debería mostrar noticias de Brisbane. Una página `/blog/technology` debería mostrar contenido relacionado con technologia. Parece obvio, pero implementarlo de forma limpia, sin parches del lado del front-end, es exactamente para lo que sirven los **Page Hard Filters** de Sitecore Search.
+
+Este artículo recorre un ejemplo concreto: hacer que la página `/news` limite automáticamente cada resultado de búsqueda al contenido etiquetado con `Brisbane`. Ningún visitante puede escapar de ese scope, ningún developer necesita pasar filter parameters en el código, y ningún autor necesita preocuparse por esto una vez que está configurado.
+
+Vamos a cubrir todo de principio a fin — attribute setup, creación de la página y widget association — con indicaciones claras sobre qué tareas corresponden al developer y cuáles puede hacer un autor o content manager por su cuenta.
+
+---
+
+## Overview
+
+### Cómo Sitecore Search entiende las páginas
+
+Sitecore Search organiza las experiencias de búsqueda alrededor de dos conceptos fundamentales:
+
+Los **Pages** son configuraciones vinculadas a una URL específica (o un URL pattern) en tu sitio. Piensa en un Page como el "conjunto de reglas" para una URL — le dice a Search qué contenido mostrar y cómo comportarse cuando alguien visita esa dirección.
+
+Los **Widgets** son los componentes de búsqueda reales (listas de resultados, dropdowns de preview, recommendations) que viven dentro de un Page y definen lo que el visitante ve.
+
+Un Page puede llevar un **Hard Filter** — una restricción fija y transparente para el usuario que limita permanentemente el conjunto de contenido que cualquier widget en esa página puede devolver. Los visitantes nunca lo ven, no pueden eliminarlo, y se aplica antes de cualquier ranking rule, cálculo de facets o filtro activado por el usuario.
+
+> **Para autores:** Piensa en el Hard Filter como decirle al motor de búsqueda "esta página solo puede hablar de Brisbane." Sin importar lo que escriba el visitante, siempre obtendrá resultados de Brisbane.
+>
+> **Para developers:** El filter se aplica server-side por la Search API antes de que se construya cualquier response. Tu componente de front-end no necesita pasar filter parameters — el page context (URL) es suficiente para que el SDK tome la restricción de forma automática.
+
+### El escenario
+
+Nuestro sitio tiene una página `/news`. El content index contiene artículos de noticias de varias ciudades, cada uno etiquetado mediante un attribute `page_tags`. El objetivo: `/news` solo debe mostrar artículos donde `page_tags = Brisbane`.
+
+### Cómo encajan las piezas
+
+```
+El visitante llega a /news
+        │
+        ▼
+Sitecore Search detecta la URL → configuración del Page "Brisbane News"
+        │
+        ├── Hard Filter aplicado primero: page_tags = "Brisbane"
+        │         (permanente, invisible, server-side)
+        │
+        ▼
+Se ejecuta el Search Results Widget
+        │
+        └── Devuelve solo documentos etiquetados con Brisbane
+              (ranking, facets y filtros del usuario operan dentro de este boundary)
+```
+
+---
+
+## Parte 1: Preparar el Attribute `page_tags`
+
+> **¿Quién hace esto?** Un developer o administrador de Sitecore Search. Esta es una configuración de una sola vez por attribute — una vez hecho, los autores pueden reutilizar el mismo attribute en cualquier número de páginas.
+
+Antes de que `page_tags` pueda usarse como hard filter, necesita que se activen las capacidades correctas en el Customer Engagement Console (CEC). Si el attribute ya existe en tu domain, solo debes verificar y habilitar algunos flags. Si aún no existe, primero lo creas desde cero.
+
+### Paso 1 — Abrir la lista de Attributes
+
+En el CEC, ve a **Administration → Domain Settings → Attributes**.
+
+Usa la barra de búsqueda para encontrar `page_tags`. Si no aparece, deberás crearlo — haz clic en **Add Attribute**, asígnale el attribute name `page_tags` y un display name adecuado antes de continuar con los pasos siguientes.
+
+![attributes setup](/static/images/sitecore-search-hard-filters/step_1_attributes.png)
+
+### Paso 2 — Abrir el editor del attribute
+
+Haz clic en `page_tags` en la lista para abrir el diálogo de edición del attribute.
+
+### Paso 3 — Activar las properties requeridas
+
+En la pestaña **Settings**, desplázate hasta la sección **Properties**. Estos son los tres flags que importan para el uso como hard filter:
+
+| Property                                      | Qué hace                                                                   | Por qué la necesitas                                                                               |
+| --------------------------------------------- | -------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| **Return in API response**                    | Incluye el valor del attribute en los payloads de resultados de búsqueda   | Sin esto, los valores de `page_tags` no regresarán en los resultados                               |
+| **Available for rules and page hard filters** | Hace que el attribute aparezca en el selector de hard filters de los pages | Esta es la más importante — sin ella, `page_tags` no aparecerá como opción al configurar el filter |
+| **Build enumeration of unique values**        | Pre-popula un dropdown con valores conocidos (p. ej. `Brisbane`, `Sydney`) | Evita tener que escribir valores manualmente al configurar filters — puedes elegir de una lista    |
+
+Asegúrate de que los tres estén marcados.
+
+![attributes settings](/static/images/sitecore-search-hard-filters/step_3_settings.png)
+
+### Paso 4 — Habilitar Filters en la pestaña Use For Features
+
+Aún en el mismo editor del attribute, haz clic en la pestaña **Use For Features**. Selecciona **Filters**.
+
+Esto registra `page_tags` en el filtering engine de Search. Sin esto, el attribute puede tener valores, pero no puede usarse para acotar resultados.
+
+![attribute filters](/static/images/sitecore-search-hard-filters/step_4_filters.png)
+
+### Paso 5 — Save y Publish
+
+Haz clic en **Save** y luego en **Publish**. Confirma cuando se te solicite.
+
+> **Atención:** Si es la primera vez que habilitas filtering en `page_tags`, marca la opción **Reindex all sources after publishing domain settings** antes de confirmar. Esto asegura que los documentos ya indexados reciban el tratamiento actualizado del attribute. En indexes grandes esto puede tomar tiempo — planifica en consecuencia.
+
+---
+
+## Parte 2: Crear el Page con un Hard Filter
+
+> **¿Quién hace esto?** Puede hacerlo un developer, un administrador de Sitecore Search, o un autor con experiencia — la interfaz del CEC para esto es bastante directa una vez que el attribute está listo.
+
+### Paso 1 — Ir a Pages
+
+En la barra de menú del CEC, haz clic en **Pages**.
+
+### Paso 2 — Crear un nuevo Landing Page
+
+Haz clic en **Create Page → Landing Page**.
+
+> **¿Por qué Landing Page?** Los Landing Pages en Sitecore Search están diseñados específicamente para experiencias como esta — una URL concreta con un scope de contenido fijo. Se complementan de forma natural con un search results widget y un hard filter.
+
+![pages](/static/images/sitecore-search-hard-filters/p2_step_2_widget_pages.png)
+
+### Paso 3 — Nombrar el page
+
+En la pestaña **Setup Page**:
+
+- **Page Name:** `Brisbane News` — esta es la etiqueta interna que verás en el CEC, así que hazla descriptiva
+- **Page Variation Name:** `Default`
+
+Haz clic en **Next**.
+
+### Paso 4 — Configurar la URL
+
+En la pestaña **URL**, ingresa:
+
+- **PAGE URL:** `/news`
+
+Este es el path exacto de la URL en tu sitio web. Cuando un visitante llega a `/news`, Search lo reconoce, carga esta configuración del page y aplica el hard filter automáticamente.
+
+Si tu sitio sirve el mismo contenido en más de una URL (p. ej. `/news` y `/news/brisbane`), haz clic en **Add URL** para incluir ambas.
+
+Haz clic en **Next**.
+
+### Paso 5 — Configurar el Hard Filter
+
+Este es el núcleo de la configuración. En la pestaña **Hard Filters**:
+
+1. Haz clic en **Add Filter**.
+2. En el dropdown **Attribute**, selecciona `page_tags`.
+   > Si `page_tags` no aparece aquí, vuelve a la Parte 1 y asegúrate de que **Available for rules and page hard filters** esté habilitado en el attribute.
+3. Establece el **Operator** en **Is** (o **Equals** según tu versión del CEC).
+4. En el campo **Value**, selecciona o escribe `Brisbane`.
+   > Si habilitaste **Build enumeration of unique values**, verás una lista de valores conocidos para seleccionar. De lo contrario, escribe el valor exactamente como aparece en tu contenido indexado.
+
+Haz clic en **Next**.
+
+### Paso 6 — Revisar y guardar
+
+En la pestaña **Review**, verifica que todo esté correcto:
+
+- **URL:** `/news`
+- **Hard Filter:** `page_tags = Brisbane`
+
+Haz clic en **Save**.
+
+![hard filters](/static/images/sitecore-search-hard-filters/p2_step_6_pages_settings.png)
+
+> **Importante — el page está vacío hasta que agregues un widget.** Creaste la configuración del page, pero Search no servirá resultados hasta que se adjunte al menos un widget. Publicar ahora no romperá nada, pero los visitantes no verán ninguna experiencia de búsqueda. Continúa con la Parte 3 antes de publicar.
+
+---
+
+## Parte 3: Crear y Asociar el Search Results Widget
+
+> **¿Quién hace esto?** Normalmente un developer crea el widget la primera vez (ya que el RFK ID debe coincidir con lo que está en el código del front-end). Las páginas posteriores que usen el mismo widget pueden ser gestionadas por autores.
+
+### Paso 1 — Crear el widget
+
+En la barra de menú del CEC, haz clic en **Widgets → Add Widget → Search Results**.
+
+Completa la pantalla de configuración:
+
+| Campo               | Valor                          | Notas                                                                                                                                                     |
+| ------------------- | ------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Widget Name**     | `Brisbane News Search Results` | Etiqueta interna — hazla significativa                                                                                                                    |
+| **RFK ID**          | `rfkid_brisbane_news`          | Este es el ID que usa el código del front-end para cargar el widget. Acuerda este valor con tu developer antes de guardar — no es fácil cambiarlo después |
+| **Variation Name**  | `Default`                      | La variation de inicio                                                                                                                                    |
+| **Will be used in** | `Landing Page`                 | Coincide con el tipo de page que creaste                                                                                                                  |
+
+Haz clic en **Next**, revisa el resumen y luego en **Save**. Después haz clic en **Publish** sobre el widget.
+
+### Paso 2 — Asociar el widget al page
+
+Vuelve a **Pages** y abre `Brisbane News`.
+
+En la pestaña **Page Components**, haz clic en **Select Widgets**. En el panel derecho, encuentra `Brisbane News Search Results` y arrástralo al panel izquierdo.
+
+Haz clic en **Save** y luego en **Publish** del page.
+
+El page ya está activo. Sitecore Search servirá solo resultados de Brisbane a cualquier widget en esta página.
+
+### Paso 3 — Integración en el front-end
+
+> **Este paso es para developers.** Los autores pueden saltarse esta sección.
+
+En tu aplicación de front-end, referencia el widget en la ruta `/news` usando el RFK ID que definiste en el Paso 1. El Sitecore Search SDK envía la URL del page actual como context en cada request — el Search service la compara con la configuración del page `Brisbane News` y aplica el hard filter de forma automática.
+
+```jsx
+// Ejemplo en React usando el Sitecore Search JS SDK
+import { SearchResultsWidget } from '@sitecore-search/react'
+
+export default function NewsPage() {
+  return <SearchResultsWidget rfkId="rfkid_brisbane_news" />
+}
+```
+
+No pasas el filter en el código. El SDK toma el URL context (`/news`), el Search service busca el page config correspondiente, encuentra `page_tags = Brisbane` y lo aplica antes de construir la response. El filter es enteramente propiedad de la configuración del CEC — cámbialo ahí y entra en efecto de inmediato, sin necesidad de un nuevo deploy.
+
+---
+
+## Resumen, Otros Casos de Uso y Beneficios
+
+### Qué construiste
+
+La página `/news` ahora tiene un boundary de contenido permanente, aplicado server-side. Cada visitante — ya sea que busque, navegue o use facets — solo verá artículos etiquetados con `Brisbane`. Tres capas distintas hicieron posible esto:
+
+1. **Attribute setup** — `page_tags` habilitado para filtering y uso como hard filter (tarea de developer/admin, se hace una sola vez)
+2. **Page configuration** — la URL `/news` vinculada al hard filter `page_tags = Brisbane` (CEC, manejable por autores)
+3. **Widget association** — un Search Results widget adjunto para entregar la experiencia (CEC + código de front-end para la conexión inicial)
+
+### Otros casos de uso
+
+El mismo patrón aplica en cualquier lugar donde necesites un scope de contenido fijo por URL. El attribute setup es el mismo — solo cambia la URL del page, el filter attribute y el valor:
+
+| Page URL                 | Hard Filter                  | Caso de uso                      |
+| ------------------------ | ---------------------------- | -------------------------------- |
+| `/news/sydney`           | `page_tags = Sydney`         | Hub de noticias por ciudad       |
+| `/blog/technology`       | `content_type = Technology`  | Listado de blog por categoría    |
+| `/resources/whitepapers` | `document_type = Whitepaper` | Biblioteca de recursos filtrada  |
+| `/en-au/products`        | `locale = en-AU`             | Catálogo de productos por región |
+
+Como el mismo widget puede reutilizarse en múltiples pages, agregar una nueva ciudad o categoría es solo cuestión de crear un nuevo page en el CEC con el hard filter correspondiente — sin cambios en el código, sin deploy.
+
+### Beneficios
+
+**Cero filter logic en el front-end**
+El filter vive en el CEC, no en el código. Los developers no necesitan inyectar filter parameters por página o por ruta — el URL context hace el trabajo.
+
+**Los visitantes no pueden salir del scope**
+A diferencia de los URL query parameters o los filtros del lado del cliente, un hard filter no tiene representación client-side. No hay nada que el visitante pueda eliminar, modificar o evadir.
+
+**Los facets se mantienen precisos**
+Los conteos de facets se calculan después de aplicar el hard filter, por lo que si muestras filtros de rango de fechas o categoría de artículo en la página `/news`, esos conteos reflejan solo el contenido de Brisbane — no el index completo.
+
+**Un widget, muchos pages**
+Una sola configuración de widget puede servir a decenas de páginas específicas por ubicación. Cada page aplica su propio hard filter, manteniendo tu widget library ligera.
+
+**Los autores pueden gestionarlo**
+Una vez que el developer configura el attribute, crear nuevos pages con scope propio es una tarea del CEC que los autores y content managers pueden manejar solos — sin necesidad de intervención técnica.
+
+**Analytics limpios por scope**
+Cada page con scope tiene su propia URL, por lo que los analytics de Sitecore Search te brindan comportamiento de búsqueda, click-through rates y zero-result queries desglosados por ubicación o categoría — sin configuración adicional.
+
+---
+
+_Documentación de Sitecore Search: [Attributes](https://doc.sitecore.com/search/en/users/search-user-guide/attributes.html) · [Add pages and widgets](https://doc.sitecore.com/search/en/users/search-user-guide/add-pages-and-widgets.html) · [Understanding filters and facets](https://doc.sitecore.com/search/en/users/search-user-guide/understanding-filters-and-facets.html)_
