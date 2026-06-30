@@ -53,7 +53,9 @@ async function generateRSS(config, allBlogs, page = 'feed.xml') {
     })
 
     for (const tag of allTags) {
-      const filteredPosts = sortPosts(publishPosts.filter((post) => post.tags?.map((t) => slug(t)).includes(tag)))
+      const filteredPosts = sortPosts(
+        publishPosts.filter((post) => post.tags?.map((t) => slug(t)).includes(tag))
+      )
       if (filteredPosts.length > 0) {
         const rss = generateRss(config, filteredPosts, `tags/${tag}/${page}`)
         const rssPath = path.join(outputFolder, 'tags', tag)

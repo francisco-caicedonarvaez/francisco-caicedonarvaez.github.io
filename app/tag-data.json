@@ -1,20 +1,24 @@
 {
   "en": {
-    "sitecore": 7,
+    "sitecore": 8,
     "azure": 2,
     "spe": 3,
     "xm-cloud": 1,
     "next-js": 2,
     "github": 1,
+    "sitecore-search": 2,
+    "graphql": 1,
     "azure-devops": 1
   },
   "es": {
-    "sitecore": 7,
+    "sitecore": 8,
     "azure": 2,
     "spe": 3,
     "xm-cloud": 1,
     "next-js": 2,
     "github": 1,
+    "sitecore-search": 2,
+    "graphql": 1,
     "azure-devops": 1
   }
 }

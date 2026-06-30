@@ -14,25 +14,27 @@ type Locale = 'en' | 'es'
 interface PaginationProps {
   totalPages: number
   currentPage: number
+  locale?: Locale
 }
 interface ListLayoutProps {
   posts: CoreContent<Blog>[]
   title: string
   initialDisplayPosts?: CoreContent<Blog>[]
   pagination?: PaginationProps
+  locale?: Locale
 }
 
-function Pagination({ totalPages, currentPage }: PaginationProps) {
+function Pagination({ totalPages, currentPage, locale = 'en' }: PaginationProps) {
   const pathname = usePathname()
 
   // Extract the actual locale from pathname to ensure correctness
   const localeMatch = pathname.match(/^\/([a-z]{2})/)
   const hasLocale = !!localeMatch
-  const locale = (localeMatch ? localeMatch[1] : 'en') as Locale
+  const actualLocale = (localeMatch ? localeMatch[1] : locale) as Locale
 
   // Extract the base path without the locale prefix and pagination
   const pathWithoutLocale = hasLocale
-    ? pathname.replace(new RegExp(`^/${locale}`), '') || '/'
+    ? pathname.replace(new RegExp(`^/${actualLocale}`), '') || '/'
     : pathname
   const basePath =
     pathWithoutLocale
@@ -43,12 +45,12 @@ function Pagination({ totalPages, currentPage }: PaginationProps) {
   const nextPage = currentPage + 1 <= totalPages
 
   // Get translated text
-  const t = siteMetadata.translations[locale]
+  const t = siteMetadata.translations[actualLocale]
   const prevText = t?.previous || 'Previous'
   const nextText = t?.next || 'Next'
 
   // Build href with locale prefix only if it existed in the original pathname
-  const buildHref = (path: string) => (hasLocale ? `/${locale}${path}` : path)
+  const buildHref = (path: string) => (hasLocale ? `/${actualLocale}${path}` : path)
 
   return (
     <div className="space-y-2 pt-6 pb-8 md:space-y-5">
@@ -91,6 +93,7 @@ export default function ListLayout({
   title,
   initialDisplayPosts = [],
   pagination,
+  locale = 'en',
 }: ListLayoutProps) {
   const [searchValue, setSearchValue] = useState('')
   const filteredBlogPosts = posts.filter((post) => {
@@ -139,7 +142,7 @@ export default function ListLayout({
         <ul>
           {!filteredBlogPosts.length && 'No posts found.'}
           {displayPosts.map((post) => {
-            const { path, date, title, summary, tags, locale } = post
+            const { path, date, title, summary, tags } = post
             return (
               <li key={path} className="py-4">
                 <article className="space-y-2 xl:grid xl:grid-cols-4 xl:items-baseline xl:space-y-0">
@@ -152,7 +155,10 @@ export default function ListLayout({
                   <div className="space-y-3 xl:col-span-3">
                     <div>
                       <h3 className="text-2xl leading-8 font-bold tracking-tight">
-                        <Link href={`/${path}`} className="text-gray-900 dark:text-gray-100">
+                        <Link
+                          href={`/${locale}/${path}`}
+                          className="text-gray-900 dark:text-gray-100"
+                        >
                           {title}
                         </Link>
                       </h3>
@@ -173,7 +179,11 @@ export default function ListLayout({
         </ul>
       </div>
       {pagination && pagination.totalPages > 1 && !searchValue && (
-        <Pagination currentPage={pagination.currentPage} totalPages={pagination.totalPages} />
+        <Pagination
+          currentPage={pagination.currentPage}
+          totalPages={pagination.totalPages}
+          locale={locale}
+        />
       )}
     </>
   )

@@ -58,7 +58,7 @@ export function genPageMetadata({
     },
     twitter: {
       title: `${title} | ${siteMetadata.title}`,
-      card: 'summary_large_image',
+      card: 'summary',
       images: image ? [image] : [siteMetadata.socialBanner],
     },
     alternates,
